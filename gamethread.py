@@ -11,7 +11,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from praw import Reddit
 import pytz
 
-from RedditUtils4.SubredditCustomConfig import SubredditCustomConfig
+from SubredditCustomConfig import SubredditCustomConfig
 
 import models
 from models import *
@@ -247,6 +247,7 @@ class ThreadUpdater(GameThreadThread):
 
 
 class ConfigUpdater(GameThreadThread):
+    # TODO: Add validation with pykwalify
     interval = timedelta(minutes=15)
 
     def __init__(self, root_sub, *args, **kwargs):
