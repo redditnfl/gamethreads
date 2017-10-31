@@ -45,7 +45,10 @@ def get_games(url = None):
         url = 'http://www.nfl.com/liveupdate/scorestrip/postseason/ss.xml'
         url = 'http://www.nfl.com/liveupdate/scorestrip/ss.xml'
     data = urllib.request.urlopen(url)
-    tree = ElementTree.parse(data)
+    try:
+        tree = ElementTree.parse(data)
+    except ElementTree.ParseError as e:
+        return
     games = {'qtr': 'Final', 'games': []}
     for g in [g.attrib for g in tree.find('gms').findall('g')]:
         start_notz = datetime(
