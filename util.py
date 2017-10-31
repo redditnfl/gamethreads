@@ -89,3 +89,6 @@ def signal_handler(signal, frame):
             t.join()
     print('Threads terminated, exiting')
     #sys.exit(0)
+
+class NotReadyException(Exception):
+    pass

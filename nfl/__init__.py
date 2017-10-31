@@ -1,10 +1,13 @@
 import pytz
 from . import const
+from gamethreads.util import NotReadyException
 
 def make_context(game, config):
     """Create the context to be passed into the template render - also for the post expression"""
     tz = pytz.timezone(config['timezone'])
     nfl_game = game.nfl_game
+    if nfl_game is None:
+        raise NotReadyException("Game %s does not have an nfl_game" % game)
     nfl_game.local_tz = tz
     for event in game.nfl_events:
         event.local_tz = tz

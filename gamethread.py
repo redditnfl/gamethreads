@@ -15,7 +15,7 @@ from SubredditCustomConfig import SubredditCustomConfig
 
 import models
 from models import *
-from util import get_or_create, now, make_safe, RedditWikiLoader, signal_handler
+from util import get_or_create, now, make_safe, RedditWikiLoader, signal_handler, NotReadyException
 
 UTC = pytz.utc
 
@@ -144,7 +144,7 @@ class Renderer:
 
 
 class ThreadPoster(GameThreadThread):
-    interval = timedelta(seconds=30)
+    interval = timedelta(seconds=15)
 
     def __init__(self, *args, **kwargs):
         self.r = Reddit('gamethread')
@@ -201,7 +201,12 @@ class ThreadPoster(GameThreadThread):
                     # Simple optimization: fetch all already_posted threads for non_archived games outside the loop
                     continue
 
-                ctx = make_context(game, sub.config)
+                try:
+                    ctx = make_context(game, sub.config)
+                except Exception as e:
+                    # TODO: This should be NotReadyException
+                    self.logger.debug("Not ready to decide whether to post %s", game)
+                    continue
                 post_decision = post_cond_fun(ctx)
                 self.logger.debug("Decision for %r: %s", game, post_decision)
                 needs_posted = False
