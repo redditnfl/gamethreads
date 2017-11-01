@@ -60,8 +60,10 @@ def decide_sleep(session, NFLGame, active_interval, interval):
     if any_playing:
         return active_interval
     # If a game is starting soon (or should have started), update sooner
-    upcoming = session.query(func.min(NFLGame.kickoff_utc).label("max_kickoff")).filter(NFLGame.state == GS_PENDING)
-    first_start = upcoming.one().max_kickoff
+    upcoming = session.query(func.min(NFLGame.kickoff_utc).label("min_kickoff")).filter(NFLGame.state == GS_PENDING)
+    first_start = upcoming.one().min_kickoff
+    if first_start is None:
+        return interval
     if first_start < (now() + interval):
         return max(first_start - now(), active_interval)
 
