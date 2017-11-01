@@ -54,10 +54,13 @@ def make_safe(model):
 
 from jinja2 import BaseLoader, TemplateNotFound
 import re
+import sys
+from datetime import timedelta
 class RedditWikiLoader(BaseLoader):
-    def __init__(self, subreddit, root):
+    def __init__(self, subreddit, root, ttl=timedelta(seconds=0)):
         self.sub = subreddit
         self.root = re.sub('(^/*|/*$)', '', root) # Remove pre and postfix slashes
+        self.ttl = ttl
 
     def get_source(self, environment, template):
         path = "%s/%s" % (self.root, template)
@@ -65,7 +68,8 @@ class RedditWikiLoader(BaseLoader):
             wp = self.sub.wiki[path]
         except Exception as e:
             raise TemplateNotFound(template)
-        return wp.content_md, None, lambda: False
+        evict = now() + self.ttl
+        return wp.content_md, None, lambda: evict > now()
 
     def list_templates(self):
         found = set()

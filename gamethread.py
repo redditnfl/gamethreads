@@ -130,7 +130,7 @@ class Renderer:
             self.envs = {}
         key = sub.display_name # Not sure using the sub itself would work
         if key not in self.envs:
-            self.envs[key] = SandboxedEnvironment(loader=RedditWikiLoader(sub, 'gamethreads/templates'))
+            self.envs[key] = SandboxedEnvironment(loader=RedditWikiLoader(sub, 'gamethreads/templates', timedelta(minutes=5)))
         return self.envs[key]
 
     def render_thread(self, reddit_sub, sub, thread_config, game, thread = None):
