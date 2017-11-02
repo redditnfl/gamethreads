@@ -4,8 +4,7 @@ import ujson
 from sqlalchemy import func
 from sqlalchemy.sql import exists
 
-from . import nflteams, nflcom
-from .nfllive import get_games
+from . import nflteams, nflcom, espn, nfllive
 
 from gamethreads.util import get_or_create, now
 from gamethreads.gamethread import GameThreadThread
@@ -89,7 +88,7 @@ class NFLGameStateUpdater(GameThreadThread):
 
     def lap(self):
         session = self.Session()
-        live_games = get_games()['games']
+        live_games = nfllive.get_games()['games']
         if live_games is None or len(live_games) == 0:
             self.logger.warning("No games found. Skipping")
             return
@@ -187,9 +186,25 @@ class NFLTeamUpdater(GameThreadThread):
                 session.add(t)
         session.commit()
 
+class NFLLineUpdater(GameThreadThread):
+    interval = timedelta(hours=1)
+
+    def lap(self):
+        session = self.Session()
+        NFLGame = self.models.nfl.NFLGame
+        for (home, away), lines in espn.get_lines().items():
+            nflgame = session.query(NFLGame).filter(NFLGame.home_id == home, NFLGame.away_id == away).one()
+            for book, (spread, total) in lines.items():
+                line, created = get_or_create(session, self.models.nfl.NFLLine, game=nflgame.game, book=book)
+                line.spread = spread
+                line.total = total
+        session.commit()
+
+
 ALL = [
         NFLTeamUpdater,
         NFLBoxscoreUpdater,
         NFLGameStateUpdater,
         NFLTeamDataUpdater,
+        NFLLineUpdater,
         ]

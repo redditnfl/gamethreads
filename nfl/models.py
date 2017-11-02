@@ -158,6 +158,18 @@ class NFLGameEvent(Base):
     def __repr__(self):
         return "<NFLGameEvent(game={0.game}, event={0.event}, datetime_utc={0.datetime_utc}>".format(self)
 
+class NFLLine(Base):
+    """Spread and total is relative to the home team"""
+    __tablename__ = 'nfl_line'
+
+    id = Column(Integer, primary_key=True)
+    book = Column(String)
+    spread = Column(String)
+    total = Column(String)
+    game_id = Column(Integer, ForeignKey('game.id'))
+    game = relationship("Game", backref=backref('nfl_lines', order_by=book), foreign_keys='NFLLine.game_id', lazy='joined')
+
+
 class NFLGame(Base):
     __tablename__ = 'nfl_game'
 

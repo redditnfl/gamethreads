@@ -17,5 +17,6 @@ def make_context(game, config):
             'events': {event.event: event for event in game.nfl_events},
             'events_list': game.nfl_events,
             'boxscore': game.nfl_data,
-            'const': {s: getattr(const, s) for s in dir(const) if not s.startswith('_')}
+            'const': {s: getattr(const, s) for s in dir(const) if not s.startswith('_')},
+            'lines': {line.book: line for line in game.nfl_lines},
             }
