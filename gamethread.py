@@ -1,6 +1,5 @@
 #!/usr/bin/env python 
 from pprint import pprint
-import importlib
 from datetime import timedelta, datetime
 import logging
 import threading
@@ -16,60 +15,11 @@ from SubredditCustomConfig import SubredditCustomConfig
 import models
 from models import *
 from util import get_or_create, now, make_safe, RedditWikiLoader, signal_handler, NotReadyException
+import plugins
 
 UTC = pytz.utc
 
-class GameThreadThread(threading.Thread):
-    staying_alive = True #Ah ah ah ah
-    wait_step = timedelta(seconds=2)
-
-    def __init__(self, *args, Session = None, logger = None, **kwargs):
-        super().__init__(name=self.__class__.__name__)
-        self.logger = logger or logging.getLogger(type(self).__name__)
-        self.Session = Session
-        self.models = models
-        self.game_type = kwargs.get('game_type')
-
-    def run(self):
-        self.logger.info("%s starting", self.name)
-        while self.staying_alive:
-            try:
-                start_time = now()
-                interval_override = self.lap()
-                self.logger.debug("Lap took %s", now() - start_time)
-                if interval_override:
-                    sleep_until = now() + interval_override
-                else:
-                    sleep_until = now() + self.interval
-                self.logger.info("Lap done - time to rest until %s", sleep_until)
-                while self.staying_alive and sleep_until > (now() + self.wait_step):
-                    time.sleep(self.wait_step.seconds)
-                if self.staying_alive:
-                    # Sleep the last bit
-                    time.sleep((sleep_until - now()).seconds)
-            except Exception as e:
-                self.logger.exception("Exception in thread work")
-        self.logger.info("%s ending", self.name)
-
-    def lap(self):
-        self.logger.info("%s says hey there", self.name)
-
-    def terminate(self):
-        self.logger.warning("%s shutting down", self.name)
-        self.Session.remove()
-        self.staying_alive = False
-
-    def active_games(self):
-        return self.games().filter(self.models.Game.state == self.models.Game.ACTIVE)
-
-    def unarchived_games(self):
-        return self.games().filter(self.models.Game.state != self.models.Game.ARCHIVED)
-
-    def games(self):
-        games = self.Session().query(self.models.Game)
-        if self.game_type is None:
-            return games
-        return games.filter(self.models.Game.game_type == self.game_type)
+from base import GameThreadThread
 
 
 class GameUpdater(GameThreadThread):
@@ -83,7 +33,7 @@ class GameUpdater(GameThreadThread):
         config = session.query(Config).all()[0].config
         for game_type in config['types']:
             self.logger.info("Finding new games for type %s", game_type)
-            finder = importlib.import_module(game_type + '.gamefinder', package=__loader__.name)
+            finder = getattr(plugins, game_type).gamefinder
             game_ids = finder.find_games()
             for game_id in game_ids:
                 game, created = get_or_create(session, Game, game_type=game_type, game_id=game_id)
@@ -109,8 +59,8 @@ def make_context(game, config, thread = None):
     MINUTE = timedelta(minutes=1)
     HOUR = timedelta(hours=1)
     DAY = timedelta(days=1)
-    generator = importlib.import_module(game.game_type, package=__loader__.name)
-    ctx = generator.make_context(game, config)
+    plugin = getattr(plugins, game.game_type)
+    ctx = plugin.make_context(game, config)
     ctx['minutes'] = MINUTE
     ctx['hours'] = HOUR
     ctx['days'] = DAY
@@ -309,18 +259,18 @@ class Gamethreader:
     def main(self):
         session = self.session
 
-        config_updater = ConfigUpdater(sys.argv[1], Session = session)
+        config_updater = ConfigUpdater(sys.argv[1], Session = session, models=models)
         # Update configs before doing anything
         config_updater.lap()
         threads = []
         threads.append(config_updater)
-        threads.append(GameUpdater(Session = session))
-        threads.append(ThreadPoster(Session = session))
-        threads.append(ThreadUpdater(Session = session))
+        threads.append(GameUpdater(Session = session, models=models))
+        threads.append(ThreadPoster(Session = session, models=models))
+        threads.append(ThreadUpdater(Session = session, models=models))
 
         for game_type in self.config()['types']:
             self.logger.info("Initiating threads for %s", game_type)
-            typethreads = importlib.import_module(game_type + '.threads', package=__loader__.name)
+            typethreads = getattr(plugins, game_type).threads
             for t in typethreads.ALL:
                 new = t(Session=session, models=models, game_type=game_type)
                 if hasattr(new, 'setup') and new.setup:

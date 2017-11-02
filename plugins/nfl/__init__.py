@@ -1,5 +1,7 @@
 import pytz
 from . import const
+from . import threads
+from . import gamefinder
 from gamethreads.util import NotReadyException
 
 def make_context(game, config):

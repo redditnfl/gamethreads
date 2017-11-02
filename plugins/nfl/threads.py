@@ -7,7 +7,7 @@ from sqlalchemy.sql import exists
 from . import nflteams, nflcom, espn, nfllive
 
 from gamethreads.util import get_or_create, now
-from gamethreads.gamethread import GameThreadThread
+from gamethreads import GameThreadThread
 from .const import *
 
 import pytz

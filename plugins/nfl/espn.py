@@ -27,7 +27,7 @@ espnteams = {
         'Minnesota': 'MIN',
         'NY Giants': 'NYG',
         'NY Jets': 'NYJ',
-        'New England', 'NE',
+        'New England': 'NE',
         'New Orleans': 'NO',
         'Oakland': 'OAK',
         'Philadelphia': 'PHI',
