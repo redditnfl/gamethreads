@@ -4,7 +4,7 @@ import ujson
 from sqlalchemy import func
 from sqlalchemy.sql import exists
 
-from . import nflteams
+from . import nflteams, nflcom
 from .nfllive import get_games
 
 from gamethreads.util import get_or_create, now
@@ -19,13 +19,24 @@ GAMETYPE = 'nfl'
 # TODO: Gather data like stadium, broadcaster and betting line
 # TODO: Gather weather forecasts
 
+def decide_sleep(session, NFLGame, active_interval, interval):
+    # If we have active games, update sooner
+    any_playing = session.query(exists().where(NFLGame.state.in_(GS_PLAYING))).scalar()
+    if any_playing:
+        return active_interval
+    # If a game is starting soon (or should have started), update sooner
+    upcoming = session.query(func.min(NFLGame.kickoff_utc).label("min_kickoff")).filter(NFLGame.state == GS_PENDING)
+    first_start = upcoming.one().min_kickoff
+    if first_start is None:
+        return interval
+    if first_start < (now() + interval):
+        return max(first_start - now(), active_interval)
+
+
 class NFLBoxscoreUpdater(GameThreadThread):
     interval = timedelta(minutes=15)
     active_interval = timedelta(minutes=5)
     
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def lap(self):
         session = self.Session()
         for game in self.active_games().filter(self.models.nfl.NFLGame.state.in_(GS_PLAYING + GS_FINAL)):
@@ -54,25 +65,27 @@ class NFLBoxscoreUpdater(GameThreadThread):
             self.logger.exception("Error getting boxscore")
             
 
-def decide_sleep(session, NFLGame, active_interval, interval):
-    # If we have active games, update sooner
-    any_playing = session.query(exists().where(NFLGame.state.in_(GS_PLAYING))).scalar()
-    if any_playing:
-        return active_interval
-    # If a game is starting soon (or should have started), update sooner
-    upcoming = session.query(func.min(NFLGame.kickoff_utc).label("min_kickoff")).filter(NFLGame.state == GS_PENDING)
-    first_start = upcoming.one().min_kickoff
-    if first_start is None:
-        return interval
-    if first_start < (now() + interval):
-        return max(first_start - now(), active_interval)
+class NFLTeamDataUpdater(GameThreadThread):
+    interval = timedelta(minutes=30)
+    setup = True
+
+    def lap(self):
+        session = self.Session()
+        teams = session.query(self.models.nfl.NFLTeam)
+        for team in teams.all():
+            if team.id != 'BAL':
+                continue
+            record = nflcom.get_record(team.id)
+            if record != (team.record_won, team.record_lost, team.record_tied):
+                self.logger.info("Updating record for %s to %r", team, record)
+                team.record = record
+            print("%s record: %s" % (team, team.formatted_record))
+        session.commit()
+
 
 class NFLGameStateUpdater(GameThreadThread):
     interval = timedelta(minutes=15)
     active_interval = timedelta(seconds=30)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
     def lap(self):
         session = self.Session()
@@ -165,9 +178,6 @@ class NFLTeamUpdater(GameThreadThread):
     interval = timedelta(hours=12)
     setup = True # Indicates that we want to be run once before threads are started
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def lap(self):
         session = self.Session()
         for short, info in nflteams.fullinfo.items():
@@ -181,4 +191,5 @@ ALL = [
         NFLTeamUpdater,
         NFLBoxscoreUpdater,
         NFLGameStateUpdater,
+        NFLTeamDataUpdater,
         ]

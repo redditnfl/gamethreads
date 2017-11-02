@@ -14,10 +14,53 @@ class NFLTeam(Base):
     mascot = Column(String)
     subreddit = Column(String)
     twitter = Column(String)
+    record_won = Column(Integer)
+    record_lost = Column(Integer)
+    record_tied = Column(Integer)
+    record_updated_utc = Column(DateTime(timezone=True))
 
     @property
     def fullname(self):
         return "{0.city} {0.mascot}".format(self)
+
+    @property
+    def record_games(self):
+        return self.record_won + self.record_lost + self.record_tied
+
+    @property
+    def games(self):
+        return self.home_games + self.away_games
+
+    @property
+    def record(self):
+        w, l, t = (self.record_won, self.record_lost, self.record_tied)
+        # See if any games ended after the record was updated and add the result
+        for game in self.games:
+            for event in game.game.nfl_events:
+                if event.event in const.GS_FINAL and event.datetime_utc > self.record_updated_utc:
+                    if game.winner == self:
+                        w += 1
+                    elif game.loser == self:
+                        l += 1
+                    elif game.is_tie:
+                        t += 1
+        return w, l, t
+
+    @record.setter
+    def record(self, value):
+        w,l,t = value
+        self.record_won = w
+        self.record_lost = l
+        self.record_tied = t
+        self.record_updated_utc = now()
+
+    @property
+    def formatted_record(self):
+        w, l, t = self.record
+        if t > 0:
+            return "{0}-{1}-{2}".format(w, l, t)
+        return "{0}-{1}".format(w, l)
+
 
     def __str__(self):
         return self.fullname
@@ -148,6 +191,22 @@ class NFLGame(Base):
             return self.updated_utc
         else:
             return self.updated_utc.astimezone(self.local_tz)
+
+    @property
+    def winner(self):
+        if self.is_tie:
+            return None
+        return self.home if self.home_score > self.away_score else self.away
+
+    @property
+    def loser(self):
+        if self.is_tie:
+            return None
+        return self.home if self.home_score < self.away_score else self.away
+
+    @property
+    def is_tie(self):
+        return self.home_score == self.away_score
 
     @property
     def age(self):
