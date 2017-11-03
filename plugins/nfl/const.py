@@ -47,3 +47,9 @@ GS_TRANSITIONS_OT = {
         (GS_Q4, GS_OT): EV_OT_START,
         (GS_OT, GS_FO): EV_FINAL_OT,
         }
+
+PRE = 'PRE'
+REG = 'REG'
+POST = 'POST'
+
+GAME_TYPES = [PRE, REG, POST]

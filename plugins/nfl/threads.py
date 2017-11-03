@@ -4,7 +4,7 @@ import ujson
 from sqlalchemy import func
 from sqlalchemy.sql import exists
 
-from . import nflteams, nflcom, espn, nfllive
+from . import nflteams, nflcom, espn, nfllive, schedule
 
 from gamethreads.util import get_or_create, now
 from gamethreads import GameThreadThread
@@ -193,11 +193,33 @@ class NFLLineUpdater(GameThreadThread):
         session = self.Session()
         NFLGame = self.models.nfl.NFLGame
         for (home, away), lines in espn.get_lines().items():
-            nflgame = session.query(NFLGame).filter(NFLGame.home_id == home, NFLGame.away_id == away).one()
+            nflgame = session.query(NFLGame).filter(NFLGame.home_id == home, NFLGame.away_id == away).one_or_none()
+            if nflgame is None:
+                continue
             for book, (spread, total) in lines.items():
                 line, created = get_or_create(session, self.models.nfl.NFLLine, game=nflgame.game, book=book)
                 line.spread = spread
                 line.total = total
+        session.commit()
+
+class NFLScheduleInfoUpdater(GameThreadThread):
+    interval = timedelta(hours=1)
+    setup = True
+
+    def lap(self):
+        session = self.Session()
+        NFLGame = self.models.nfl.NFLGame
+        season, game_type, week = schedule.get_week(now().date())
+        for game in schedule.get_schedule(season, game_type, week):
+            nflgame = session.query(NFLGame).filter(NFLGame.eid == game.eid).one_or_none()
+            if nflgame is None:
+                self.logger.debug("NFLGame missing for eid={0.eid}, skipping".format(game))
+                continue
+            nflgame.season = season
+            nflgame.game_type = game_type
+            nflgame.week = week
+            nflgame.tv = game.tv
+            nflgame.site = game.site
         session.commit()
 
 
@@ -207,4 +229,5 @@ ALL = [
         NFLGameStateUpdater,
         NFLTeamDataUpdater,
         NFLLineUpdater,
+        NFLScheduleInfoUpdater,
         ]

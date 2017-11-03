@@ -187,6 +187,11 @@ class NFLGame(Base):
     kickoff_utc = Column(DateTime(timezone=True))
     state = Column(Enum(*const.GS, name='NFL_GAME_STATE'))
     updated_utc = Column(DateTime(timezone=True))
+    season = Column(Integer)
+    game_type = Column(Enum(*const.GAME_TYPES, name='NFL_GAME_TYPE')) # PRE/REG/POST
+    week = Column(String(length=25))
+    tv = Column(String)
+    site = Column(String)
 
     local_tz = None
 
