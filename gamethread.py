@@ -31,6 +31,12 @@ class GameUpdater(GameThreadThread):
     def lap(self):
         session = self.Session()
         config = session.query(Config).all()[0].config
+
+        # Archive games closed more than 4 days
+        for game in session.query(Game).filter(Game.state == Game.CLOSED, Game.state_changed_utc < now() - timedelta(days=4)):
+            self.logger.info("Archiving game %s", game)
+            game.state = Game.ARCHIVED
+
         for game_type in config['types']:
             self.logger.info("Finding new games for type %s", game_type)
             finder = getattr(plugins, game_type).gamefinder
@@ -40,12 +46,9 @@ class GameUpdater(GameThreadThread):
                 if created:
                     self.logger.info("New game %r", game)
                     session.add(game)
-            # TODO: archive games
-            for game in session.query(Game).filter(Game.state == Game.CLOSED, Game.state_changed_utc < now() - timedelta(days=7)):
-                game.state = Game.ARCHIVED
-            # Update states
+            # Update states of pending and active games
             self.logger.info("Updating games for type %s", game_type)
-            for game in session.query(Game).filter(or_(Game.state != Game.CLOSED, Game.state == None), Game.game_type == game_type):
+            for game in session.query(Game).filter(or_(Game.state.in_([Game.PENDING, Game.ACTIVE]), Game.state == None), Game.game_type == game_type):
                 self.logger.debug("Getting updated state for %r", game)
                 before = game.state
                 game = finder.update_state(game)

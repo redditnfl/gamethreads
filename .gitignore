@@ -4,3 +4,4 @@ __pycache__/
 *.log
 praw.ini
 env.sh
+*.swp
