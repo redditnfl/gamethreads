@@ -9,6 +9,7 @@ from collections import namedtuple
 import requests
 import pytz
 from .nflteams import get_team
+from .sites import sites
 
 WEEK = timedelta(days=7)
 
@@ -33,13 +34,14 @@ POST = 'POST'
 #        return cmp(self.eid, other.eid)
 #Game.__cmp__ = game_cmp
 class Game:
-    def __init__(self, date, home, away, tv, eid, site):
+    def __init__(self, date, home, away, tv, eid, site, place):
         self.date = date
         self.home = home
         self.away = away
         self.tv = tv
         self.eid = eid
         self.site = site
+        self.place = place
 
     def __lt__(self, other):
         if self.date != other.date:
@@ -107,61 +109,7 @@ def parse_game(li):
     except IndexError as e:
         tv = None
 
-    return Game(eid=eid, tv=tv, date=None, home=None, away=None, site=None)
-
-def tz_for_site(site):
-    EST = pytz.timezone('US/Eastern')
-    CST = pytz.timezone('US/Central')
-    PST = pytz.timezone('US/Pacific')
-    MST_NODST = pytz.timezone('US/Arizona') # No DST
-    MST = pytz.timezone('America/Denver')
-    GMT = pytz.timezone('Europe/London')
-    sites = {
-            'Gillette Stadium': EST,
-            'Georgia Dome': EST,
-            'Mercedes-Benz Stadium': EST,
-            'AT&T Stadium': CST,
-            'Arrowhead Stadium': CST,
-            'Lambeau Field': CST,
-            'NRG Stadium': CST,
-            'CenturyLink Field': PST,
-            'New Era Field': EST,
-            'Nissan Stadium': CST,
-            'Lincoln Financial Field': EST,
-            'Hard Rock Stadium': EST,
-            'EverBank Field': EST,
-            'Lucas Oil Stadium': EST,
-            'Bank of America Stadium': EST,
-            'FirstEnergy Stadium': EST,
-            'Ford Field': EST,
-            'Levi\'s Stadium': PST,
-            u'Levi\'s® Stadium': PST,
-            'Raymond James Stadium': EST,
-            'Los Angeles Memorial Coliseum': PST,
-            'MetLife Stadium': EST,
-            'Soldier Field': CST,
-            'M&T Bank Stadium': EST,
-            'Paul Brown Stadium': EST,
-            'U.S. Bank Stadium': CST,
-            'University of Phoenix Stadium': MST_NODST,
-            'Qualcomm Stadium': PST,
-            'StubHub Center': PST,
-            'Sports Authority Field at Mile High': MST,
-            'FedExField': EST,
-            'Oakland Coliseum': PST,
-            'Mercedes-Benz Superdome': CST,
-            'Heinz Field': EST,
-
-            'Estadio Azteca': pytz.timezone('America/Mexico_City'),
-            'Wembley Stadium': GMT,
-            'Twickenham Stadium': GMT,
-            'Tom Benson Hall of Fame Stadium': EST,
-            'Camping World Stadium': EST,
-            }
-    if site in sites:
-        return sites[site]
-    else:
-        raise Exception("Unknown site: " + site)
+    return Game(eid=eid, tv=tv, date=None, home=None, away=None, site=None, place=None)
 
 def parse_schedule(data):
     soup = BeautifulSoup(data, "html5lib")
@@ -171,10 +119,15 @@ def parse_schedule(data):
     for div in soup.find_all("div", class_="schedules-list-content"):
         eid = div['data-gameid']
         site = div['data-site']
+        if site in sites:
+            tz, place = sites[site]
+        else:
+            tz = pytz.timezone('US/Eastern')
+            place = ''
         date_str = eid[0:8] + 'T' + div['data-localtime']
         date_naive = datetime.strptime(date_str, '%Y%m%dT%H:%M:%S')
-        date = tz_for_site(site).localize(date_naive)
-        game = Game(eid=eid, date=date, site=site, home=get_team(div['data-home-abbr']), away=get_team(div['data-away-abbr']), tv=None)
+        date = tz.localize(date_naive)
+        game = Game(eid=eid, date=date, site=site, home=get_team(div['data-home-abbr']), away=get_team(div['data-away-abbr']), tv=None, place=place)
         games[game.eid] = game
 
     for li in soup.find_all("li", class_='schedules-list-matchup'):

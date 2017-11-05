@@ -72,13 +72,10 @@ class NFLTeamDataUpdater(GameThreadThread):
         session = self.Session()
         teams = session.query(self.models.nfl.NFLTeam)
         for team in teams.all():
-            if team.id != 'BAL':
-                continue
             record = nflcom.get_record(team.id)
             if record != (team.record_won, team.record_lost, team.record_tied):
                 self.logger.info("Updating record for %s to %r", team, record)
                 team.record = record
-            print("%s record: %s" % (team, team.formatted_record))
         session.commit()
 
 
@@ -218,8 +215,10 @@ class NFLScheduleInfoUpdater(GameThreadThread):
             nflgame.season = season
             nflgame.game_type = game_type
             nflgame.week = week
-            nflgame.tv = game.tv
+            if game.tv: # TV info disappears after game has played
+                nflgame.tv = game.tv
             nflgame.site = game.site
+            nflgame.place = game.place
         session.commit()
 
 

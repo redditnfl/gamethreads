@@ -1,6 +1,9 @@
 import json
+import re
+
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Boolean
 from sqlalchemy.orm import relationship, backref
+
 from gamethreads import Base
 from gamethreads.util import now
 from . import const
@@ -192,8 +195,11 @@ class NFLGame(Base):
     week = Column(String(length=25))
     tv = Column(String)
     site = Column(String)
+    place = Column(String)
 
     local_tz = None
+
+    place_re = re.compile(r'(?P<country>[^/]*)/(?P<subdivision>[^/]*)/(?P<city>[^/~]*)')
 
     @property
     def kickoff(self):
@@ -208,6 +214,25 @@ class NFLGame(Base):
             return self.updated_utc
         else:
             return self.updated_utc.astimezone(self.local_tz)
+
+    @property
+    def city(self):
+        return self.place_re.match(self.place).group('city').replace('_', ' ')
+
+    @property
+    def subdivision(self):
+        return self.place_re.match(self.place).group('subdivision').replace('_', ' ')
+
+    @property
+    def country(self):
+        return self.place_re.match(self.place).group('country').replace('_', ' ')
+
+    @property
+    def formatted_location(self):
+        if self.country == 'United States':
+            return "{0.city}, {0.subdivision}".format(self)
+        else:
+            return "{0.city}, {0.country}".format(self)
 
     @property
     def winner(self):
