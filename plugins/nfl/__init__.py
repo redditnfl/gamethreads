@@ -21,4 +21,5 @@ def make_context(game, config):
             'boxscore': game.nfl_data,
             'const': {s: getattr(const, s) for s in dir(const) if not s.startswith('_')},
             'lines': {line.book: line for line in game.nfl_lines},
+            'forecast': game.nfl_forecast,
             }

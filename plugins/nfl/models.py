@@ -1,7 +1,7 @@
 import json
 import re
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Boolean, Numeric
 from sqlalchemy.orm import relationship, backref
 
 from gamethreads import Base
@@ -171,6 +171,36 @@ class NFLLine(Base):
     total = Column(String)
     game_id = Column(Integer, ForeignKey('game.id'))
     game = relationship("Game", backref=backref('nfl_lines', order_by=book), foreign_keys='NFLLine.game_id', lazy='joined')
+
+
+class NFLForecast(Base):
+    """Weather forecast, fetched from yr.no"""
+    __tablename__ = 'nfl_forecast'
+
+    id = Column(Integer, primary_key=True)
+    game_id = Column(Integer, ForeignKey('game.id'))
+    game = relationship("Game", backref=backref('nfl_forecast', uselist=False), foreign_keys='NFLForecast.game_id', lazy='joined')
+
+    symbol_name = Column(String)
+    symbol_var = Column(String)
+    temp_c = Column(Integer)
+    pressure_hpa = Column(Numeric(precision=5, scale=1))
+    windspeed_mps = Column(Numeric(precision=4, scale=1))
+    prec_mm = Column(Numeric(precision=4, scale=1))
+
+    credit = 'Weather forecast from yr.no, delivered by the Norwegian Meteorological Institute and the NRK'
+
+    @property
+    def temp_f(self):
+        return round(self.temp_c * 1.8 + 32)
+
+    @property
+    def windspeed_mph(self):
+        return round(self.windspeed_mps * 2.23694)
+
+    @property
+    def prec_inch(self):
+        return round(self.prec_mm * 0.0393701, 1)
 
 
 class NFLGame(Base):

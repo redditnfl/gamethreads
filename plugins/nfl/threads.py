@@ -1,15 +1,16 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from urllib.request import urlopen
 import ujson
 from sqlalchemy import func
 from sqlalchemy.sql import exists
 
-from . import nflteams, nflcom, espn, nfllive, schedule
+from . import nflteams, nflcom, espn, nfllive, schedule, sites
 
 from gamethreads.util import get_or_create, now
 from gamethreads import GameThreadThread
 from .const import *
 
+from yr.libyr import Yr
 import pytz
 UTC = pytz.utc
 
@@ -201,7 +202,6 @@ class NFLLineUpdater(GameThreadThread):
 
 class NFLScheduleInfoUpdater(GameThreadThread):
     interval = timedelta(hours=1)
-    setup = True
 
     def lap(self):
         session = self.Session()
@@ -221,6 +221,44 @@ class NFLScheduleInfoUpdater(GameThreadThread):
             nflgame.place = game.place
         session.commit()
 
+class NFLForecastUpdater(GameThreadThread):
+    interval = timedelta(minutes=10)
+    setup = True
+
+    def lap(self):
+        session = self.Session()
+        NFLGame = self.models.nfl.NFLGame
+        for game in self.games().filter(self.models.Game.state == self.models.Game.PENDING):
+            try:
+                tz = sites.sites[game.nfl_game.site][0]
+                forecast = self.get_forecast(game.nfl_game.place, game.nfl_game.kickoff_utc, tz)
+                if forecast:
+                    fm, created = get_or_create(session, self.models.nfl.NFLForecast, game=game)
+                    fm.symbol_name = forecast['symbol']['@name']
+                    fm.symbol_var = forecast['symbol']['@var']
+                    fm.temp_c = forecast['temperature']['@value']
+                    fm.pressure_hpa = forecast['pressure']['@value']
+                    fm.windspeed_mps = forecast['windSpeed']['@mps']
+                    fm.prec_mm = forecast['precipitation']['@value']
+            except Exception as e:
+                self.logger.exception("Error getting weather for %r", game.nfl_game)
+        session.commit()
+
+    def get_forecast(self, place, kickoff, tz):
+        for forecast in Yr(location_name=place).forecast():
+            forecast = self.localize_times(forecast, tz)
+            if forecast['@from'] <= kickoff < forecast['@to']:
+                self.logger.debug("Found weather %r", forecast)
+                return forecast
+
+    def localize_times(self, forecast, tz):
+        def localize(ts, tz):
+            ts = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S")
+            return tz.localize(ts)
+        forecast['@from'] = localize(forecast['@from'], tz)
+        forecast['@to'] = localize(forecast['@to'], tz)
+        return forecast
+
 
 ALL = [
         NFLTeamUpdater,
@@ -229,4 +267,5 @@ ALL = [
         NFLTeamDataUpdater,
         NFLLineUpdater,
         NFLScheduleInfoUpdater,
+        NFLForecastUpdater,
         ]
