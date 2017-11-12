@@ -38,11 +38,13 @@ class NFLBoxscoreUpdater(GameThreadThread):
     def lap(self):
         session = self.Session()
         # Make sure all games get a final update, even after they are completed
-        for game in self.games().filter(self.models.nfl.NFLGameData.final == False):
+        for game in self.games().join(self.models.Game.nfl_data).filter(self.models.nfl.NFLGameData.final == False).join(self.models.Game.nfl_game).filter(self.models.nfl.NFLGame.state != GS_PENDING):
             self.logger.info("Updating boxscore for %r", game)
             gamedata, created = get_or_create(session, self.models.nfl.NFLGameData, game=game)
             json = self.get_json(game.game_id)
-            if json and 'drives' in json:
+            if not json:
+                continue
+            if 'drives' in json:
                 del(json['drives'])
             gamedata.content = json
             if game.nfl_game.state in GS_FINAL:
@@ -62,7 +64,7 @@ class NFLBoxscoreUpdater(GameThreadThread):
         try:
             return ujson.load(urlopen(url))[eid]
         except Exception as e:
-            self.logger.exception("Error getting boxscore")
+            self.logger.exception("Error getting boxscore for %s", eid)
             
 
 class NFLTeamDataUpdater(GameThreadThread):
