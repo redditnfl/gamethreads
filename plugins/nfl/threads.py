@@ -16,8 +16,6 @@ UTC = pytz.utc
 
 GAMETYPE = 'nfl'
 
-# TODO: Gather data like stadium, broadcaster and betting line
-# TODO: Gather weather forecasts
 
 def decide_sleep(session, NFLGame, active_interval, interval):
     # If we have active games, update sooner
@@ -39,15 +37,17 @@ class NFLBoxscoreUpdater(GameThreadThread):
     
     def lap(self):
         session = self.Session()
-        for game in self.active_games().filter(self.models.nfl.NFLGame.state.in_(GS_PLAYING + GS_FINAL)):
+        # Make sure all games get a final update, even after they are completed
+        for game in self.games().filter(self.models.nfl.NFLGameData.final == False):
             self.logger.info("Updating boxscore for %r", game)
             gamedata, created = get_or_create(session, self.models.nfl.NFLGameData, game=game)
-            if created:
-                session.add(gamedata)
             json = self.get_json(game.game_id)
             if json and 'drives' in json:
                 del(json['drives'])
             gamedata.content = json
+            if game.nfl_game.state in GS_FINAL:
+                self.logger.info("Game %r is final. No more boxscore updates", game)
+                gamedata.final = True
         session.commit()
 
         new_int = decide_sleep(session, self.models.nfl.NFLGame, self.active_interval, self.interval)

@@ -92,6 +92,7 @@ class NFLGameData(Base):
     game = relationship("Game", backref=backref('nfl_data', order_by=datatype, uselist=False), foreign_keys='NFLGameData.game_id', lazy='joined')
     content_json = Column(String)
     updated_utc = Column(DateTime(timezone=True))
+    final = Column(Boolean, default=False)
     
     local_tz = None
     
@@ -184,9 +185,9 @@ class NFLForecast(Base):
     symbol_name = Column(String)
     symbol_var = Column(String)
     temp_c = Column(Integer)
-    pressure_hpa = Column(Numeric(precision=5, scale=1))
-    windspeed_mps = Column(Numeric(precision=4, scale=1))
-    prec_mm = Column(Numeric(precision=4, scale=1))
+    pressure_hpa = Column(Numeric(precision=5, scale=1, asdecimal=False))
+    windspeed_mps = Column(Numeric(precision=4, scale=1, asdecimal=False))
+    prec_mm = Column(Numeric(precision=4, scale=1, asdecimal=False))
 
     credit = 'Weather forecast from yr.no, delivered by the Norwegian Meteorological Institute and the NRK'
 
