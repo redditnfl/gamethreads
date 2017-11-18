@@ -1,8 +1,10 @@
 import json
 import re
+from datetime import timedelta
 
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Boolean, Numeric
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm.session import Session
 
 from gamethreads import Base
 from gamethreads.util import now
@@ -304,6 +306,20 @@ class NFLGame(Base):
             self.seconds_left = int(minutes)*60+int(seconds)
         except (AttributeError, ValueError) as e:
             self.seconds_left = None
+
+    @property
+    def is_primetime(self):
+        """A game is considered primetime if no other game starts within 2
+        hours before or after the game's kickoff. This covers things like the
+        thanksgiving games as well"""
+        margin = timedelta(hours=2)
+        after = self.kickoff_utc - margin
+        before = self.kickoff_utc + margin
+        try:
+            session = Session.object_session(self)
+            return 1 == session.query(NFLGame).filter(NFLGame.kickoff_utc > after, NFLGame.kickoff_utc < before).count()
+        except Exception as e:
+            return False
 
     def __repr__(self):
         return "<Game(eid=%s,home=%s,away=%s)>" % (self.eid, self.home, self.away)
