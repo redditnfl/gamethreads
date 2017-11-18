@@ -75,10 +75,13 @@ class NFLTeamDataUpdater(GameThreadThread):
         session = self.Session()
         teams = session.query(self.models.nfl.NFLTeam)
         for team in teams.all():
-            record = nflcom.get_record(team.id)
-            if record != (team.record_won, team.record_lost, team.record_tied):
-                self.logger.info("Updating record for %s to %r", team, record)
-                team.record = record
+            try:
+                record = nflcom.get_record(team.id)
+                if record != (team.record_won, team.record_lost, team.record_tied):
+                    self.logger.info("Updating record for %s to %r", team, record)
+                    team.record = record
+            except Exception as e:
+                self.logger.exception("Error updating record for %r", team)
         session.commit()
 
 
