@@ -44,6 +44,7 @@ sites = {
         'Heinz Field': [EST, 'United_States/Pennsylvania/Pittsburgh'],
 
         'Estadio Azteca': [pytz.timezone('America/Mexico_City'), 'Mexico/Distrito_Federal/Mexico_City'],
+        'Estadio Azteca (Mexico City)': [pytz.timezone('America/Mexico_City'), 'Mexico/Distrito_Federal/Mexico_City'],
         'Wembley Stadium': [GMT, 'United_kingdom/England/London'],
         'Twickenham Stadium': [GMT, 'United_kingdom/England/London'],
         'Tom Benson Hall of Fame Stadium': [EST, 'United_States/Ohio/Canton'],
