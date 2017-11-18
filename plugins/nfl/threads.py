@@ -38,7 +38,7 @@ class NFLBoxscoreUpdater(GameThreadThread):
     def lap(self):
         session = self.Session()
         # Make sure all games get a final update, even after they are completed
-        for game in self.games().join(self.models.Game.nfl_data).filter(self.models.nfl.NFLGameData.final == False).join(self.models.Game.nfl_game).filter(self.models.nfl.NFLGame.state != GS_PENDING):
+        for game in self.unarchived_games().join(self.models.Game.nfl_game).filter(self.models.nfl.NFLGame.state != GS_PENDING):
             self.logger.info("Updating boxscore for %r", game)
             gamedata, created = get_or_create(session, self.models.nfl.NFLGameData, game=game)
             json = self.get_json(game.game_id)
