@@ -69,7 +69,6 @@ class NFLBoxscoreUpdater(GameThreadThread):
 
 class NFLTeamDataUpdater(GameThreadThread):
     interval = timedelta(minutes=30)
-    setup = True
 
     def lap(self):
         session = self.Session()
