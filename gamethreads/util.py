@@ -80,19 +80,5 @@ class RedditWikiLoader(BaseLoader):
                 found.add(page.replace(self.root, '', 1))
         return found
 
-import threading
-import sys
-def signal_handler(signal, frame):
-    print('SIGINT detected, terminating threads!')
-    for t in threading.enumerate():
-        if t != threading.main_thread():
-            t.terminate()
-    print('Waiting for threads to terminate')
-    for t in threading.enumerate():
-        if t != threading.main_thread():
-            t.join()
-    print('Threads terminated, exiting')
-    #sys.exit(0)
-
 class NotReadyException(Exception):
     pass

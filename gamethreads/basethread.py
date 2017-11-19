@@ -1,19 +1,19 @@
 from datetime import timedelta
-import threading
 import logging
+import threading
 import time
 
-from util import now
+from .models import Game
+from .util import now
 
 class GameThreadThread(threading.Thread):
     staying_alive = True #Ah ah ah ah
     wait_step = timedelta(seconds=2)
 
-    def __init__(self, *args, Session = None, logger = None, models = None, **kwargs):
+    def __init__(self, *args, Session = None, logger = None, **kwargs):
         super().__init__(name=self.__class__.__name__)
         self.logger = logger or logging.getLogger(type(self).__name__)
         self.Session = Session
-        self.models = models
         self.game_type = kwargs.get('game_type')
 
     def run(self):
@@ -46,13 +46,13 @@ class GameThreadThread(threading.Thread):
         self.staying_alive = False
 
     def active_games(self):
-        return self.games().filter(self.models.Game.state == self.models.Game.ACTIVE)
+        return self.games().filter(Game.state == Game.ACTIVE)
 
     def unarchived_games(self):
-        return self.games().filter(self.models.Game.state != self.models.Game.ARCHIVED)
+        return self.games().filter(Game.state != Game.ARCHIVED)
 
     def games(self):
-        games = self.Session().query(self.models.Game)
+        games = self.Session().query(Game)
         if self.game_type is None:
             return games
-        return games.filter(self.models.Game.game_type == self.game_type)
+        return games.filter(Game.game_type == self.game_type)

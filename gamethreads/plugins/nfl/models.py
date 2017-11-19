@@ -6,8 +6,8 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Bool
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.session import Session
 
-from gamethreads import Base
-from gamethreads.util import now
+from ...models import Base
+from ...util import now
 from . import const
 
 

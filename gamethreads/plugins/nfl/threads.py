@@ -6,9 +6,12 @@ from sqlalchemy.sql import exists
 
 from . import nflteams, nflcom, espn, nfllive, schedule, sites
 
-from gamethreads.util import get_or_create, now
-from gamethreads import GameThreadThread
+from ...util import get_or_create, now
+from ...basethread import GameThreadThread
+from ...models import Game
+
 from .const import *
+from .models import *
 
 from yr.libyr import Yr
 import pytz
@@ -38,9 +41,9 @@ class NFLBoxscoreUpdater(GameThreadThread):
     def lap(self):
         session = self.Session()
         # Make sure all games get a final update, even after they are completed
-        for game in self.unarchived_games().join(self.models.Game.nfl_game).filter(self.models.nfl.NFLGame.state != GS_PENDING):
+        for game in self.unarchived_games().join(Game.nfl_game).filter(NFLGame.state != GS_PENDING):
             self.logger.info("Updating boxscore for %r", game)
-            gamedata, created = get_or_create(session, self.models.nfl.NFLGameData, game=game)
+            gamedata, created = get_or_create(session, NFLGameData, game=game)
             json = self.get_json(game.game_id)
             if not json:
                 continue
@@ -52,7 +55,7 @@ class NFLBoxscoreUpdater(GameThreadThread):
                 gamedata.final = True
         session.commit()
 
-        new_int = decide_sleep(session, self.models.nfl.NFLGame, self.active_interval, self.interval)
+        new_int = decide_sleep(session, NFLGame, self.active_interval, self.interval)
         session.close()
         if new_int:
             self.logger.debug("Shortened sleep: %s", new_int)
@@ -72,7 +75,7 @@ class NFLTeamDataUpdater(GameThreadThread):
 
     def lap(self):
         session = self.Session()
-        teams = session.query(self.models.nfl.NFLTeam)
+        teams = session.query(NFLTeam)
         for team in teams.all():
             try:
                 record = nflcom.get_record(team.id)
@@ -115,7 +118,7 @@ class NFLGameStateUpdater(GameThreadThread):
                 self.logger.debug("Active games: %r", games)
                 continue
             active_game = games[game_state['eid']]
-            game, created = get_or_create(session, self.models.nfl.NFLGame, game=active_game, eid=game_state['eid'])
+            game, created = get_or_create(session, NFLGame, game=active_game, eid=game_state['eid'])
             if created:
                 game.kickoff_utc = game_state['time_tz'].astimezone(UTC)
             updated = False
@@ -135,7 +138,7 @@ class NFLGameStateUpdater(GameThreadThread):
                 self.logger.debug("Game was updated %s", game_state['eid'])
                 game.updated_utc = now()
         session.commit()
-        new_int = decide_sleep(session, self.models.nfl.NFLGame, self.active_interval, self.interval) 
+        new_int = decide_sleep(session, NFLGame, self.active_interval, self.interval) 
         session.close()
         if new_int:
             self.logger.debug("Shortened sleep: %s", new_int)
@@ -150,7 +153,7 @@ class NFLGameStateUpdater(GameThreadThread):
                 dt = game.nfl_game.kickoff_utc
             else:
                 dt = now_
-            event, created = get_or_create(session, self.models.nfl.NFLGameEvent, game=game, event=event, datetime_utc=dt)
+            event, created = get_or_create(session, NFLGameEvent, game=game, event=event, datetime_utc=dt)
 
     def find_events(self, from_gs, to_gs):
         """Figure out which events must have happened to take us from one state to another"""
@@ -182,7 +185,7 @@ class NFLTeamUpdater(GameThreadThread):
     def lap(self):
         session = self.Session()
         for short, info in nflteams.fullinfo.items():
-            t, created = get_or_create(session, self.models.nfl.NFLTeam, id=short, city=info['city'], mascot=info['mascot'], subreddit=info['subreddit'].replace('/r/',''), twitter=info['twitter'])
+            t, created = get_or_create(session, NFLTeam, id=short, city=info['city'], mascot=info['mascot'], subreddit=info['subreddit'].replace('/r/',''), twitter=info['twitter'])
             if created:
                 self.logger.info("Adding team %r", t)
                 session.add(t)
@@ -193,13 +196,12 @@ class NFLLineUpdater(GameThreadThread):
 
     def lap(self):
         session = self.Session()
-        NFLGame = self.models.nfl.NFLGame
         for (home, away), lines in espn.get_lines().items():
             nflgame = session.query(NFLGame).filter(NFLGame.home_id == home, NFLGame.away_id == away).one_or_none()
             if nflgame is None:
                 continue
             for book, (spread, total) in lines.items():
-                line, created = get_or_create(session, self.models.nfl.NFLLine, game=nflgame.game, book=book)
+                line, created = get_or_create(session, NFLLine, game=nflgame.game, book=book)
                 line.spread = spread
                 line.total = total
         session.commit()
@@ -209,7 +211,6 @@ class NFLScheduleInfoUpdater(GameThreadThread):
 
     def lap(self):
         session = self.Session()
-        NFLGame = self.models.nfl.NFLGame
         season, game_type, week = schedule.get_week(now().date())
         for game in schedule.get_schedule(season, game_type, week):
             nflgame = session.query(NFLGame).filter(NFLGame.eid == game.eid).one_or_none()
@@ -231,13 +232,12 @@ class NFLForecastUpdater(GameThreadThread):
 
     def lap(self):
         session = self.Session()
-        NFLGame = self.models.nfl.NFLGame
-        for game in self.games().filter(self.models.Game.state == self.models.Game.PENDING):
+        for game in self.games().filter(Game.state == Game.PENDING):
             try:
                 tz = sites.sites[game.nfl_game.site][0]
                 forecast = self.get_forecast(game.nfl_game.place, game.nfl_game.kickoff_utc, tz)
                 if forecast:
-                    fm, created = get_or_create(session, self.models.nfl.NFLForecast, game=game)
+                    fm, created = get_or_create(session, NFLForecast, game=game)
                     fm.symbol_name = forecast['symbol']['@name']
                     fm.symbol_var = forecast['symbol']['@var']
                     fm.temp_c = forecast['temperature']['@value']

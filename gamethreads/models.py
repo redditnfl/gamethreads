@@ -3,13 +3,14 @@ import json
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Boolean, Text
 from sqlalchemy.orm import relationship, backref
 
-from gamethreads import Base
-
 GAME_PENDING = 'pending'
 GAME_ACTIVE = 'active'
 GAME_CLOSED = 'closed'
 GAME_ARCHIVED = 'archived'
 GAME_STATES = [GAME_PENDING, GAME_ACTIVE, GAME_CLOSED, GAME_ARCHIVED]
+
+from sqlalchemy.ext.declarative import declarative_base
+Base = declarative_base()
 
 class Game(Base):
     __tablename__ = 'game'
@@ -85,7 +86,6 @@ class Thread(Base):
     def __repr__(self):
         return "<Thread(id={0.id}, thread_id={0.thread_id})>".format(self)
 
-from gamethreads.plugins.nfl import models as nfl
 
 if __name__ == "__main__":
     import sys

@@ -5,3 +5,4 @@ __pycache__/
 praw.ini
 env.sh
 *.swp
+*.egg-info/
