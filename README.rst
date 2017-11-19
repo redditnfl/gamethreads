@@ -1,11 +1,11 @@
 Setup
 =====
 
-Install the necessary dependencies, e.g. in a virtualenv:
+Install gamethreads and dependencies with pip, e.g. in a virtualenv:
 
 ::
 
-    pip install -r requirements.txt
+    pip install -e git+git@github.com:redditnfl/gamethreads.git#egg=gamethreads
 
 Register the app as a personal use script on reddit and create a
 praw.ini with the necessary information:
