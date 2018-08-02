@@ -10,6 +10,7 @@ espnteams = {
         'Baltimore': 'BAL',
         'Buffalo': 'BUF',
         'Carolina': 'CAR',
+        'Bears': 'CHI',
         'Chicago': 'CHI',
         'Cincinnati': 'CIN',
         'Cleveland': 'CLE',
