@@ -27,6 +27,7 @@ def realteam(short):
 def q(q):
     qs = {
             'P': 'Not started',
+            'Pregame': 'Not started',
             '1': 'Q1',
             '2': 'Q2',
             'H': 'Halftime',
@@ -61,7 +62,7 @@ def get_games(url = None):
                   hours=int(g['t'].split(':')[0])+12,
                 minutes=int(g['t'].split(':')[1])
             )
-            if g['eid'] in ('2016100200','2016102300','2016103000', '2016112400', '2017102900'): # Morning games
+            if g['eid'] in ('2016100200','2016102300','2016103000', '2016112400', '2017102900', '2017112300'): # Morning games
                 start_notz -= timedelta(hours=12)
         day = int(start_notz.strftime('%w'))
         hour = int(start_notz.strftime('%H'))

@@ -36,7 +36,7 @@ def decide_sleep(session, NFLGame, active_interval, interval):
 
 class NFLBoxscoreUpdater(GameThreadThread):
     interval = timedelta(minutes=15)
-    active_interval = timedelta(minutes=5)
+    active_interval = timedelta(minutes=3)
     
     def lap(self):
         session = self.Session()
@@ -78,6 +78,8 @@ class NFLTeamDataUpdater(GameThreadThread):
         teams = session.query(NFLTeam)
         for team in teams.all():
             try:
+                if team.id in ['AFC', 'NFC']:
+                    continue
                 record = nflcom.get_record(team.id)
                 if record != (team.record_won, team.record_lost, team.record_tied):
                     self.logger.info("Updating record for %s to %r", team, record)
@@ -90,13 +92,14 @@ class NFLTeamDataUpdater(GameThreadThread):
 class NFLGameStateUpdater(GameThreadThread):
     interval = timedelta(minutes=15)
     active_interval = timedelta(seconds=30)
+    setup = True
 
     def lap(self):
         session = self.Session()
-        live_games = nfllive.get_games()['games']
-        if live_games is None or len(live_games) == 0:
-            self.logger.warning("No games found. Skipping")
-            return
+#        live_games = nfllive.get_games()['games']
+#        if live_games is None or len(live_games) == 0:
+#            self.logger.warning("No games found. Skipping")
+#            return
 #, url='http://rasher.dk/tmp/ss.xml'
 
         prop_map = {
@@ -106,21 +109,36 @@ class NFLGameStateUpdater(GameThreadThread):
                 'clock':('clock',lambda s: '--:--' if s == '' else s),
                 'home_score':('home_score',int),
                 'away_score':('away_score',int),
-                'kickoff_utc':('time_tz',lambda t: t.astimezone(UTC)),
+#                'kickoff_utc':('time_tz',lambda t: t.astimezone(UTC)),
                 }
 
-        games = dict([(game.game_id, game) for game in self.unarchived_games()])
+        lookahead = timedelta(hours=24)
+        cutoff = now() + lookahead
+        games = self.unarchived_games().join(NFLGame).filter(NFLGame.kickoff_utc < cutoff)
+        for active_game in games:
+            boxscore = self.get_json(active_game.game_id)
+            game_state = {
+                    'eid': active_game.game_id,
+                    'q': nfllive.q(boxscore['qtr']),
+                    'home': boxscore['home']['abbr'],
+                    'away': boxscore['away']['abbr'],
+                    'clock': boxscore['clock'],
+                    'home_score': boxscore['home']['score']['T'],
+                    'away_score': boxscore['away']['score']['T'],
+                    }
 
-        for game_state in live_games:
             self.logger.debug("Updating state for %s", game_state['eid'])
-            if game_state['eid'] not in games:
-                self.logger.warning("Parent Game object not found for eid=%s, skipping", game_state['eid'])
-                self.logger.debug("Active games: %r", games)
+#            if game_state['eid'] not in games:
+#                self.logger.warning("Parent Game object not found for eid=%s, skipping", game_state['eid'])
+#                self.logger.debug("Active games: %r", games)
+#                continue
+            if 'TBD' in (game_state['home'], game_state['away']):
+                self.logger.warning("Game participants still TBD for eid=%s, skipping", game_state['eid'])
                 continue
-            active_game = games[game_state['eid']]
+#            active_game = games[game_state['eid']]
             game, created = get_or_create(session, NFLGame, game=active_game, eid=game_state['eid'])
-            if created:
-                game.kickoff_utc = game_state['time_tz'].astimezone(UTC)
+#            if created:
+#                game.kickoff_utc = game_state['time_tz'].astimezone(UTC)
             updated = False
             for x, (y, f) in prop_map.items():
                 new = game_state[y]
@@ -177,6 +195,15 @@ class NFLGameStateUpdater(GameThreadThread):
         if cur_gs != to_gs:
             events = []
         return events
+    
+    def get_json(self, eid):
+        """Copy-pasted, eek"""
+        fmt = 'http://www.nfl.com/liveupdate/game-center/{eid}/{eid}_gtd.json'
+        url = fmt.format(eid=eid)
+        try:
+            return ujson.load(urlopen(url))[eid]
+        except Exception as e:
+            self.logger.exception("Error getting boxscore for %s", eid)
 
 class NFLTeamUpdater(GameThreadThread):
     interval = timedelta(hours=12)
@@ -193,12 +220,14 @@ class NFLTeamUpdater(GameThreadThread):
 
 class NFLLineUpdater(GameThreadThread):
     interval = timedelta(hours=1)
+    setup = False
 
     def lap(self):
         session = self.Session()
         for (home, away), lines in espn.get_lines().items():
-            nflgame = session.query(NFLGame).filter(NFLGame.home_id == home, NFLGame.away_id == away).one_or_none()
+            nflgame = session.query(NFLGame).filter(NFLGame.home_id == home, NFLGame.away_id == away).order_by(NFLGame.kickoff_utc.desc()).first()
             if nflgame is None:
+                self.logger.warning("No game found for %s@%s", away, home)
                 continue
             for book, (spread, total) in lines.items():
                 line, created = get_or_create(session, NFLLine, game=nflgame.game, book=book)
@@ -213,8 +242,8 @@ class NFLScheduleInfoUpdater(GameThreadThread):
         session = self.Session()
         season, game_type, week = schedule.get_week(now().date())
         for game in schedule.get_schedule(season, game_type, week):
-            nflgame = session.query(NFLGame).filter(NFLGame.eid == game.eid).one_or_none()
-            if nflgame is None:
+            self.logger.debug("Updating schedule info for game %s", game.eid)
+            if not game.nfl_game:
                 self.logger.debug("NFLGame missing for eid={0.eid}, skipping".format(game))
                 continue
             nflgame.season = season
@@ -224,15 +253,20 @@ class NFLScheduleInfoUpdater(GameThreadThread):
                 nflgame.tv = game.tv
             nflgame.site = game.site
             nflgame.place = game.place
+            if game.date:
+                nflgame.kickoff_utc = game.date
         session.commit()
 
 class NFLForecastUpdater(GameThreadThread):
     interval = timedelta(minutes=10)
-    setup = True
+    setup = False
 
     def lap(self):
         session = self.Session()
         for game in self.games().filter(Game.state == Game.PENDING):
+            if not game.nfl_game or not game.nfl_game.site:
+                self.logger.warning("Game %s has no NFLGame or site. Not getting weather", game)
+                continue
             try:
                 tz = sites.sites[game.nfl_game.site][0]
                 forecast = self.get_forecast(game.nfl_game.place, game.nfl_game.kickoff_utc, tz)
