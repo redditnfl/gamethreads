@@ -124,6 +124,8 @@ def parse_schedule(data):
         else:
             tz = pytz.timezone('US/Eastern')
             place = ''
+        if not div['data-localtime']:
+            div['data-localtime'] = "20:00:01"
         date_str = eid[0:8] + 'T' + div['data-localtime']
         date_naive = datetime.strptime(date_str, '%Y%m%dT%H:%M:%S')
         date = tz.localize(date_naive)
@@ -137,14 +139,14 @@ def parse_schedule(data):
     return sorted(games.values(), key=lambda g: g.eid)
 
 def get_url(season, game_type, week):
-    return "http://www.nfl.com/schedules/{season}/{game_type}{week}".format(season=season, game_type=game_type, week=week if week else '')
+    return "http://www.nfl.com/schedules/{season}/{game_type}{week}".format(season=season, game_type=game_type, week='' if week is None else week)
 
 def get_schedule(season, game_type, week):
     url = get_url(season, game_type, week)
     schedule = parse_schedule(requests.get(url).content)
     return schedule
 
-if __name__ == "__main__":
+def main():
     import doctest
     import sys
     from pprint import pprint
