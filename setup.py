@@ -99,7 +99,11 @@ setup(
     # py_modules=['mypackage'],
 
     entry_points={
-        'console_scripts': ['gamethreads=gamethreads.gamethreader:main'],
+        'console_scripts': [
+            'gamethreads=gamethreads.gamethreader:main',
+            'redzone=gamethreads.plugins.nfl.redzone:main',
+            'schedule=gamethreads.plugins.nfl.schedule:main',
+            ],
     },
     install_requires=REQUIRED,
     include_package_data=True,
