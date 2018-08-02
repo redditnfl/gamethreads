@@ -243,7 +243,8 @@ class NFLScheduleInfoUpdater(GameThreadThread):
         season, game_type, week = schedule.get_week(now().date())
         for game in schedule.get_schedule(season, game_type, week):
             self.logger.debug("Updating schedule info for game %s", game.eid)
-            if not game.nfl_game:
+            nflgame = session.query(NFLGame).filter(NFLGame.eid == game.eid).one_or_none()
+            if nflgame is None:
                 self.logger.debug("NFLGame missing for eid={0.eid}, skipping".format(game))
                 continue
             nflgame.season = season
