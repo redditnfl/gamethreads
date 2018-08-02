@@ -7,7 +7,7 @@ def get_record(team_id):
     """Get a team's record as (won,lost,tied)"""
     soup = BeautifulSoup(requests.get(TEAM_URL.format(team_id)).content, 'html5lib')
     record_str = soup.find('p', 'team-overall-ranking').span.string.strip()[1:-1]
-    return tuple(map(int, record_str.split('-')))
+    return tuple(map(lambda s: int(s) if s.isdigit() else 0, record_str.split('-')))
 
 if __name__ == "__main__":
     import sys
