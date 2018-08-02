@@ -42,6 +42,7 @@ class NFLTeam(Base):
         # See if any games ended after the record was updated and add the result
         for game in self.games:
             for event in game.game.nfl_events:
+                # If the game ended after we updated, adjust the record
                 if event.event in const.GS_FINAL and event.datetime_utc > self.record_updated_utc:
                     if game.winner == self:
                         w += 1
@@ -54,10 +55,11 @@ class NFLTeam(Base):
     @record.setter
     def record(self, value):
         w,l,t = value
-        self.record_won = w
-        self.record_lost = l
-        self.record_tied = t
-        self.record_updated_utc = now()
+        if value != (self.record_won, self.record_lost, self.record_tied):
+            self.record_won = w
+            self.record_lost = l
+            self.record_tied = t
+            self.record_updated_utc = now()
 
     @property
     def formatted_record(self):
@@ -174,6 +176,9 @@ class NFLLine(Base):
     total = Column(String)
     game_id = Column(Integer, ForeignKey('game.id'))
     game = relationship("Game", backref=backref('nfl_lines', order_by=book), foreign_keys='NFLLine.game_id', lazy='joined')
+
+    def __repr__(self):
+        return "<NFLLine(game={0.game}, book={0.book}, total={0.total}, spread={0.spread}>".format(self)
 
 
 class NFLForecast(Base):
