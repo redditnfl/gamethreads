@@ -35,8 +35,8 @@ subreddits = {
         'TEN': '/r/tennesseetitans',
         'WAS': '/r/redskins',
 
-#        'AFC': '/AFC',
-#        'NFC': '/NFC',
+        'AFC': '/AFC',
+        'NFC': '/NFC',
         }
 fullnames = {
         'ARI': 'Arizona Cardinals',
@@ -72,8 +72,8 @@ fullnames = {
         'TEN': 'Tennessee Titans',
         'WAS': 'Washington Redskins',
 
-#        'AFC': 'AFC Pro Bowl Team',
-#        'NFC': 'NFC Pro Bowl Team',
+        'AFC': 'AFC Pro Bowl Team',
+        'NFC': 'NFC Pro Bowl Team',
         }
 cities = {
         'ARI': 'Arizona',
@@ -108,8 +108,8 @@ cities = {
         'TB': 'Tampa Bay',
         'TEN': 'Tennessee',
         'WAS': 'Washington',
-#        'AFC': 'AFC',
-#        'NFC': 'NFC',
+        'AFC': 'AFC',
+        'NFC': 'NFC',
         }
 mascots = {
         'ARI': 'Cardinals',
@@ -144,8 +144,8 @@ mascots = {
         'TB': 'Buccaneers',
         'TEN': 'Titans',
         'WAS': 'Redskins',
-#        'AFC': 'AFC',
-#        'NFC': 'NFC',
+        'AFC': 'AFC',
+        'NFC': 'NFC',
         }
 
 twitter = {
@@ -181,8 +181,8 @@ twitter = {
         'TB': 'TBBuccaneers',
         'TEN': 'Titans',
         'WAS': 'Redskins',
-#        'AFC': '',
-#        'NFC': '',
+        'AFC': '',
+        'NFC': '',
         }
 
 colors = {
@@ -351,7 +351,13 @@ colors = {
                  (u'Gold', u'#FFB612'),
                  (u'White', u'#FFFFFF')],
          
-         }
+         },
+ 'AFC': {'all': [(u'Red', u'#DB1F26'),
+                 (u'White', u'#FFFFFF')],
+         },
+ 'NFC': {'all': [(u'Blue', u'#12376E'),
+                 (u'White', u'#FFFFFF')],
+         },
  }
 
 
