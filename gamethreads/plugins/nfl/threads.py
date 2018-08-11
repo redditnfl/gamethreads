@@ -1,5 +1,6 @@
 from datetime import timedelta, datetime
 from urllib.request import urlopen
+import urllib
 import ujson
 from sqlalchemy import func
 from sqlalchemy.sql import exists
@@ -114,9 +115,12 @@ class NFLGameStateUpdater(GameThreadThread):
 
         lookahead = timedelta(hours=24)
         cutoff = now() + lookahead
-        games = self.unarchived_games().join(NFLGame).filter(NFLGame.kickoff_utc < cutoff)
+        games = self.unarchived_games()
         for active_game in games:
             boxscore = self.get_json(active_game.game_id)
+            if not boxscore:
+                self.logger.warning("Could not get boxscore for %s", game_state['eid'])
+                continue
             game_state = {
                     'eid': active_game.game_id,
                     'q': nfllive.q(boxscore['qtr']),
@@ -202,6 +206,8 @@ class NFLGameStateUpdater(GameThreadThread):
         url = fmt.format(eid=eid)
         try:
             return ujson.load(urlopen(url))[eid]
+        except urllib.error.HTTPError as e:
+            self.logger.info("Could not get boxscore for %s - not started?", eid)
         except Exception as e:
             self.logger.exception("Error getting boxscore for %s", eid)
 
