@@ -119,7 +119,7 @@ class NFLGameStateUpdater(GameThreadThread):
         for active_game in games:
             boxscore = self.get_json(active_game.game_id)
             if not boxscore:
-                self.logger.warning("Could not get boxscore for %s", game_state['eid'])
+                self.logger.warning("Could not get boxscore for %s", active_game.game_id)
                 continue
             game_state = {
                     'eid': active_game.game_id,
@@ -243,16 +243,19 @@ class NFLLineUpdater(GameThreadThread):
 
 class NFLScheduleInfoUpdater(GameThreadThread):
     interval = timedelta(hours=1)
+    setup = True
 
     def lap(self):
         session = self.Session()
         season, game_type, week = schedule.get_week(now().date())
         for game in schedule.get_schedule(season, game_type, week):
             self.logger.debug("Updating schedule info for game %s", game.eid)
-            nflgame = session.query(NFLGame).filter(NFLGame.eid == game.eid).one_or_none()
-            if nflgame is None:
-                self.logger.debug("NFLGame missing for eid={0.eid}, skipping".format(game))
-                continue
+            basegame = session.query(Game).filter(Game.game_id == game.eid).one_or_none()
+            if basegame is None:
+                self.logger.info("Game %s does not exist, skipping", game.eid)
+            nflgame, created = get_or_create(session, NFLGame, game=basegame, eid=basegame.game_id)
+            if created:
+                self.logger.info("Adding NFLGame for %s", game.eid)
             nflgame.season = season
             nflgame.game_type = game_type
             nflgame.week = week
