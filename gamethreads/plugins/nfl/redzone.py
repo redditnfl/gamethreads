@@ -29,7 +29,7 @@ def print_diff(before, after, revision):
     revision = datetime.utcfromtimestamp(revision)
     now = datetime.utcnow().replace(microsecond=0)
     diff = ""
-    for line in difflib.unified_diff(before.split("\n"), after.split("\n"), fromfile="before", tofile="after", n=2, lineterm="", fromfiledate=str(revision), tofiledate=str(now)):
+    for line in difflib.unified_diff(before.split("\n"), after.split("\n"), fromfile="before", tofile="after", n=0, lineterm="", fromfiledate=str(revision), tofiledate=str(now)):
         diff += line + "\n"
     print(diff)
 
@@ -38,12 +38,12 @@ def main():
     Session = sessionmaker(bind=engine)
 
     session = Session()
-    day = EST.localize(datetime(2017, 12, 31))
+    day = EST.localize(datetime(2018, 8, 18, 0, 0, 0))
     sub = 'nfl'
     nextday = day + timedelta(days=1)
-    table  = "|          |   |    |   |          |   |                |                      |\n"
-    table += "|:---------|--:|:--:|:--|---------:|--:|:--------------:|:--------------------:|\n"
-    table += "| **Away** |   |    |   | **Home** |   | **Gamethread** | **Post Game Thread** |\n"
+    table  = "|             |          |   |    |   |          |   |                |                      |\n"
+    table += "|:------------|:--------:|--:|:--:|:--|:--------:|--:|:--------------:|:--------------------:|\n"
+    table += "| **Kickoff** | **Away** |   |    |   | **Home** |   | **Gamethread** | **Post Game Thread** |\n"
     for nflgame in session.query(NFLGame).filter(NFLGame.kickoff_utc > day, NFLGame.kickoff_utc <= nextday).order_by(NFLGame.kickoff_utc, NFLGame.eid):
         if nflgame.is_primetime:
             continue
@@ -51,7 +51,7 @@ def main():
         for thread in nflgame.game.threads:
             if thread.sub.name == sub:
                 threads[thread.thread_type] = thread
-        table += "|[*{0.away.id}*](/r/{0.away.subreddit}) | {0.away_score} | at | {0.home_score} | [*{0.home.id}*](/r/{0.home.subreddit}) | {0.state} | {gt} | {pgt}|\n".format(nflgame, gt=make_link(threads, 'gamethread'), pgt=make_link(threads, 'post_gamethread'))
+        table += "|{kickoff:%-I:%M %p}|[*{0.away.id}*](/r/{0.away.subreddit}) | {0.away_score} | at | {0.home_score} | [*{0.home.id}*](/r/{0.home.subreddit}) | {0.state} | {gt} | {pgt}|\n".format(nflgame, gt=make_link(threads, 'gamethread'), pgt=make_link(threads, 'post_gamethread'), kickoff=nflgame.kickoff_utc.astimezone(EST))
 
     r = Reddit('gamethread')
     thread = r.submission(url=sys.argv[1])
