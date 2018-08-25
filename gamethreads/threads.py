@@ -91,8 +91,6 @@ class Renderer:
         template = env.get_template(thread_config['template'])
         ctx = make_context(game, sub.config, thread)
         title, body = map(lambda s: s.strip(), template.render(ctx).split("\n", 1))
-        #self.logger.debug("Thread title: %s", title)
-        #self.logger.debug("Thread content: %s", body)
         return title, body
 
 
@@ -115,7 +113,7 @@ class ThreadPoster(GameThreadThread):
                 try:
                     title, body = self.renderer.render_thread(reddit_sub, sub, thread, game)
                 except Exception as e:
-                    self.logger.exception("Could not render template %s", thread['template'])
+                    self.logger.exception("Could not render template %s with game %s", thread['template'], game)
                     continue
                 self.logger.debug("Posting sub=<%s>, title=<%s>", sub, title)
                 try:
@@ -152,13 +150,16 @@ class ThreadPoster(GameThreadThread):
                 if self.already_posted(sub, thread, game):
                     # This could prove expensive, but it's easy for now.
                     # Simple optimization: fetch all already_posted threads for non_archived games outside the loop
+                    self.logger.debug("Game already posted, skipping")
                     continue
 
                 try:
                     ctx = make_context(game, sub.config)
-                except Exception as e:
-                    # TODO: This should be NotReadyException
+                except NotReadyException as e:
                     self.logger.debug("Not ready to decide whether to post %s", game)
+                    continue
+                except Exception as e:
+                    self.logger.exception("Error generating context for game %s", game)
                     continue
                 post_decision = post_cond_fun(ctx)
                 self.logger.debug("Decision for %r: %s", game, post_decision)
