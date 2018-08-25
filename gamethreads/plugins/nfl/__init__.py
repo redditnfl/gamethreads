@@ -16,7 +16,7 @@ def make_context(game, config):
         event.local_tz = tz
     # Fix teams in scoring summary
     scoring = []
-    if game.nfl_data and 'scrsummary' in game.nfl_data.content:
+    if game.nfl_data and game.nfl_data.content and 'scrsummary' in game.nfl_data.content:
         scoring = {int(drive_id): drive for drive_id, drive in game.nfl_data.content['scrsummary'].items()}
         for drive_id in scoring:
             team_id = scoring[drive_id]['team']
