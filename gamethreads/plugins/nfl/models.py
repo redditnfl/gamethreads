@@ -127,6 +127,8 @@ class NFLGameData(Base):
     def performers(self):
         ret = {'home': {}, 'away': {}}
         js = self.content
+        if js is None:
+            return None
 
         for who in 'home', 'away':
             for stat in ('passing', 'rushing', 'receiving'):
