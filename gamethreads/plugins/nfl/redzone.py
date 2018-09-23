@@ -36,14 +36,18 @@ def print_diff(before, after, thread):
     print(diff)
 
 def find_submission(r, regex):
-    for s in r.user.me().submissions.new(limit=20):
+    for s in r.user.me().submissions.new(limit=50):
         if re.match(regex, s.title):
             time = pytz.UTC.localize(datetime.utcfromtimestamp(s.created_utc)).astimezone(EST)
             return s, time.replace(hour=0, minute=0, second=0)
+    return None, None
 
 def main():
     r = Reddit('gamethread')
     rz_thread, day = find_submission(r, sys.argv[1])
+    if rz_thread is None:
+        print("No thread found matching %s" % sys.argv[1])
+        sys.exit(1)
     engine = sqlalchemy.create_engine('postgresql+psycopg2://{0[PGUSER]}:{0[PGPASSWORD]}@{0[PGHOST]}:{0[PGPORT]}/{0[PGDATABASE]}'.format(os.environ), echo = False)
     Session = sessionmaker(bind=engine)
 
