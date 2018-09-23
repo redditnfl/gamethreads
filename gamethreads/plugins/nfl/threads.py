@@ -37,7 +37,7 @@ def decide_sleep(session, NFLGame, active_interval, interval):
 
 class NFLBoxscoreUpdater(GameThreadThread):
     interval = timedelta(minutes=15)
-    active_interval = timedelta(minutes=3)
+    active_interval = timedelta(minutes=2)
     
     def lap(self):
         session = self.Session()
@@ -274,6 +274,8 @@ class NFLScheduleInfoUpdater(GameThreadThread):
             nflgame.place = game.place
             if game.date:
                 nflgame.kickoff_utc = game.date
+            if game.eid == '2018092311':
+                game.date -= timedelta(hours=1)
         session.commit()
 
 class NFLForecastUpdater(GameThreadThread):
