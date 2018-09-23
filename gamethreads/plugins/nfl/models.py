@@ -41,6 +41,7 @@ class NFLTeam(Base):
         w, l, t = (self.record_won, self.record_lost, self.record_tied)
         # See if any games ended after the record was updated and add the result
         for game in self.games:
+            adjusted = False
             for event in game.game.nfl_events:
                 # If the game ended after we updated, adjust the record
                 if event.event in const.GS_FINAL and event.datetime_utc > self.record_updated_utc:
@@ -50,6 +51,10 @@ class NFLTeam(Base):
                         l += 1
                     elif game.is_tie:
                         t += 1
+                    adjusted = True
+                    break
+            if adjusted:
+                continue
         return w, l, t
 
     @record.setter
