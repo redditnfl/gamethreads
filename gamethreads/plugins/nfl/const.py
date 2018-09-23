@@ -8,11 +8,13 @@ GS_Q4 = 'Q4'
 GS_F  = 'Final'
 GS_OT = 'OT'
 GS_FO = 'Final (OT)'
+GS_FO2 = 'final overtime'
+GS_SUSPENDED = 'Suspended'
 
-GS = [GS_UNKNOWN, GS_PENDING, GS_Q1, GS_Q2, GS_HT, GS_Q3, GS_Q4, GS_OT, GS_F, GS_FO]
+GS = [GS_UNKNOWN, GS_PENDING, GS_Q1, GS_Q2, GS_HT, GS_Q3, GS_Q4, GS_OT, GS_F, GS_FO, GS_FO2, GS_SUSPENDED]
 GS_PLAYING = [GS_Q1, GS_Q2, GS_HT, GS_Q3, GS_Q4, GS_OT]
-GS_FINAL = [GS_F, GS_FO]
-GS_OT_STATES = [GS_OT, GS_FO]
+GS_FINAL = [GS_F, GS_FO, GS_FO2]
+GS_OT_STATES = [GS_OT, GS_FO, GS_FO2]
 
 EV_KICKOFF_SCHEDULED = 'Kickoff (scheduled)'
 EV_KICKOFF_ACTUAL = 'Kickoff (actual)'
@@ -46,6 +48,7 @@ GS_TRANSITIONS_NORMAL = {
 GS_TRANSITIONS_OT = {
         (GS_Q4, GS_OT): EV_OT_START,
         (GS_OT, GS_FO): EV_FINAL_OT,
+        (GS_OT, GS_FO2): EV_FINAL_OT,
         }
 
 PRE = 'PRE'
