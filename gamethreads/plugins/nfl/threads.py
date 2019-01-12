@@ -260,8 +260,6 @@ class NFLScheduleInfoUpdater(GameThreadThread):
             nflgame, created = get_or_create(session, NFLGame, game=basegame, eid=basegame.game_id)
             if created:
                 self.logger.info("Adding NFLGame for %s", game.eid)
-                nflgame.home_id = game.home['short']
-                nflgame.away_id = game.away['short']
                 nflgame.home_score = 0
                 nflgame.away_score = 0
                 if game.date < now():
@@ -269,6 +267,8 @@ class NFLScheduleInfoUpdater(GameThreadThread):
                 else:
                     nflgame.state = GS_UNKNOWN
 
+            nflgame.home_id = game.home['short']
+            nflgame.away_id = game.away['short']
             nflgame.season = season
             nflgame.game_type = game_type
             nflgame.week = week
