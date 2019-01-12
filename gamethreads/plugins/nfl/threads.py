@@ -250,9 +250,13 @@ class NFLScheduleInfoUpdater(GameThreadThread):
         season, game_type, week = schedule.get_week(now().date())
         for game in schedule.get_schedule(season, game_type, week):
             self.logger.debug("Updating schedule info for game %s", game.eid)
+            if game.home is None or game.away is None:
+                self.logger.warning("Game %s has None home or away, skipping", game.eid)
+                continue
             basegame = session.query(Game).filter(Game.game_id == game.eid).one_or_none()
             if basegame is None:
                 self.logger.info("Game %s does not exist, skipping", game.eid)
+                continue
             nflgame, created = get_or_create(session, NFLGame, game=basegame, eid=basegame.game_id)
             if created:
                 self.logger.info("Adding NFLGame for %s", game.eid)
