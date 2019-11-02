@@ -278,6 +278,8 @@ class NFLScheduleInfoUpdater(GameThreadThread):
             nflgame.place = game.place
             if game.date:
                 nflgame.kickoff_utc = game.date
+            else:
+                self.logger.warn("No kickoff for game %s", game.eid)
             if game.eid == '2018092311':
                 game.date -= timedelta(hours=1)
         session.commit()
