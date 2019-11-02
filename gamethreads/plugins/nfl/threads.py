@@ -79,7 +79,7 @@ class NFLTeamDataUpdater(GameThreadThread):
         teams = session.query(NFLTeam)
         for team in teams.all():
             try:
-                if team.id in ['AFC', 'NFC']:
+                if team.id in ['AFC', 'NFC', 'APR', 'NPR']:
                     continue
                 record = nflcom.get_record(team.id)
                 if record != (team.record_won, team.record_lost, team.record_tied):
@@ -278,6 +278,8 @@ class NFLScheduleInfoUpdater(GameThreadThread):
             nflgame.place = game.place
             if game.date:
                 nflgame.kickoff_utc = game.date
+            else:
+                self.logger.warn("No kickoff for game %s", game.eid)
             if game.eid == '2018092311':
                 game.date -= timedelta(hours=1)
         session.commit()

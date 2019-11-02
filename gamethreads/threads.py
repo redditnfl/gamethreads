@@ -69,6 +69,7 @@ def make_context(game, config, thread = None):
     ctx['days'] = DAY
     ctx['base_game'] = game
     ctx['thread'] = thread
+    ctx['now'] = now()
     return ctx
 
 

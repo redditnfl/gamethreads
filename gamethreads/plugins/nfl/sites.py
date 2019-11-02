@@ -41,10 +41,13 @@ sites = {
         'Qualcomm Stadium': [PST, 'United_States/California/San_Diego'],
         'ROKiT Field at StubHub Center': [PST, 'United_States/California/Carson'],
         'StubHub Center': [PST, 'United_States/California/Carson'],
+        'ROKiT Field at Dignity Health Sports Park': [PST, 'United_States/California/Carson'],
         'Sports Authority Field at Mile High': [MST, 'United_States/Colorado/Denver'],
         'Broncos Stadium at Mile High': [MST, 'United_States/Colorado/Denver'],
+        'Empower Field at Mile High': [MST, 'United_States/Colorado/Denver'],
         'FedExField': [EST, 'United_States/Maryland/Landover'],
         'Oakland Coliseum': [PST, 'United_States/California/Oakland'],
+        'Oakland-Alameda County Coliseum': [PST, 'United_States/California/Oakland'],
         'Mercedes-Benz Superdome': [CST, 'United_States/Louisiana/New_Orleans'],
         'Heinz Field': [EST, 'United_States/Pennsylvania/Pittsburgh'],
 
@@ -54,4 +57,5 @@ sites = {
         'Twickenham Stadium': [GMT, 'United_kingdom/England/London'],
         'Tom Benson Hall of Fame Stadium': [EST, 'United_States/Ohio/Canton'],
         'Camping World Stadium': [EST, 'United_States/Florida/Orlando'],
+        'Tottenham Hotspur Stadium': [GMT, 'United_kingdom/England/London'],
         }
