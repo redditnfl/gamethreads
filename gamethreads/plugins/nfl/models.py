@@ -69,7 +69,9 @@ class NFLTeam(Base):
     @property
     def formatted_record(self):
         w, l, t = self.record
-        if t > 0:
+        if None in (w, l, t):
+            return ""
+        if t:
             return "{0}-{1}-{2}".format(w, l, t)
         return "{0}-{1}".format(w, l)
 
