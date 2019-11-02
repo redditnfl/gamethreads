@@ -20,6 +20,7 @@ STARTDAYS = [
         date(2016, 9, 6),
         date(2017, 9, 5),
         date(2018, 9, 4),
+        date(2019, 9, 5),
         ]
 
 PRE = 'PRE'
@@ -122,8 +123,7 @@ def parse_schedule(data):
         if site in sites:
             tz, place = sites[site]
         else:
-            tz = pytz.timezone('US/Eastern')
-            place = ''
+            raise Exception("Unknown site %s" % site)
         if not div['data-localtime']:
             div['data-localtime'] = "20:00:01"
         date_str = eid[0:8] + 'T' + div['data-localtime']
@@ -152,6 +152,9 @@ def main():
     from pprint import pprint
     doctest.testmod()
     if len(sys.argv) == 4:
-        pprint(get_schedule(*sys.argv[1:]))
+        games = get_schedule(*sys.argv[1:])
     else:
-        pprint(get_schedule(*get_week(datetime.now().date())))
+        games = get_schedule(*get_week(datetime.now().date()))
+
+    for game in games:
+        print("{g.away[short]}@{g.home[short]} - {g.date}".format(g=game))
