@@ -21,15 +21,15 @@ AUTHOR = 'Jonas Häggqvist'
 # What packages are required for this module to be executed?
 REQUIRED = [
     'appdirs>=1.4.0,<2',
-    'Jinja2>=2.9.6,<3',
+    'Jinja2>=2.10.1,<3',
     'beautifulsoup4>=4.6.0,<5',
     'html5lib>=0.999999999,<1',
     'percache>=0.3.0,<1',
     'praw>=5.1.0,<6',
     'pytz',
     'python-yr>=1.4.5,<2',
-    'PyYAML>=3.12,<4',
-    'SQLAlchemy>=1.1.14,<1.2',
+    'PyYAML>=5.1,<6',
+    'SQLAlchemy>=1.3.0,<1.4',
     'ujson>=1.35,<2',
     'psycopg2>=2.7.3.1,<3',
 ]
