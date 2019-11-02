@@ -43,6 +43,7 @@ class NFLTeam(Base):
         w, l, t = (self.record_won, self.record_lost, self.record_tied)
         # See if any games ended after the record was updated and add the result
         for game in self.games:
+            #continue # Disable adjusting for playoffs
             adjusted = False
             for event in game.game.nfl_events:
                 # If the game ended after we updated, adjust the record
@@ -56,7 +57,8 @@ class NFLTeam(Base):
                     adjusted = True
                     break
             if adjusted:
-                continue
+                # Only adjust once. If we need more, things are messed up.
+                break
         return w, l, t
 
     @record.setter
