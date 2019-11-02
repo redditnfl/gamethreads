@@ -79,7 +79,7 @@ class NFLTeamDataUpdater(GameThreadThread):
         teams = session.query(NFLTeam)
         for team in teams.all():
             try:
-                if team.id in ['AFC', 'NFC']:
+                if team.id in ['AFC', 'NFC', 'APR', 'NPR']:
                     continue
                 record = nflcom.get_record(team.id)
                 if record != (team.record_won, team.record_lost, team.record_tied):

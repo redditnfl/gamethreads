@@ -37,6 +37,8 @@ subreddits = {
 
         'AFC': '/AFC',
         'NFC': '/NFC',
+        'APR': '/AFC',
+        'NPR': '/NFC',
         }
 fullnames = {
         'ARI': 'Arizona Cardinals',
@@ -74,6 +76,8 @@ fullnames = {
 
         'AFC': 'AFC Pro Bowl Team',
         'NFC': 'NFC Pro Bowl Team',
+        'APR': 'AFC Pro Bowl Team',
+        'NPR': 'NFC Pro Bowl Team',
         }
 cities = {
         'ARI': 'Arizona',
@@ -110,6 +114,8 @@ cities = {
         'WAS': 'Washington',
         'AFC': 'AFC',
         'NFC': 'NFC',
+        'APR': 'AFC',
+        'NPR': 'NFC',
         }
 mascots = {
         'ARI': 'Cardinals',
@@ -146,6 +152,8 @@ mascots = {
         'WAS': 'Redskins',
         'AFC': 'AFC',
         'NFC': 'NFC',
+        'APR': 'AFC',
+        'NPR': 'NFC',
         }
 
 twitter = {
@@ -183,6 +191,8 @@ twitter = {
         'WAS': 'Redskins',
         'AFC': '',
         'NFC': '',
+        'APR': '',
+        'NPR': '',
         }
 
 colors = {
@@ -356,6 +366,12 @@ colors = {
                  (u'White', u'#FFFFFF')],
          },
  'NFC': {'all': [(u'Blue', u'#12376E'),
+                 (u'White', u'#FFFFFF')],
+         },
+ 'APR': {'all': [(u'Red', u'#DB1F26'),
+                 (u'White', u'#FFFFFF')],
+         },
+ 'NPR': {'all': [(u'Blue', u'#12376E'),
                  (u'White', u'#FFFFFF')],
          },
  }

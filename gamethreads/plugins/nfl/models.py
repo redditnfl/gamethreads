@@ -26,6 +26,8 @@ class NFLTeam(Base):
 
     @property
     def fullname(self):
+        if self.id in ['NPR', 'APR']:
+            return self.city
         return "{0.city} {0.mascot}".format(self)
 
     @property
