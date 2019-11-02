@@ -28,7 +28,7 @@ REQUIRED = [
     'praw>=5.1.0,<6',
     'pytz',
     'python-yr>=1.4.5,<2',
-    'PyYAML>=3.12,<4',
+    'PyYAML>=3.12,<6',
     'SQLAlchemy>=1.1.14,<1.2',
     'ujson>=1.35,<2',
     'psycopg2>=2.7.3.1,<3',
