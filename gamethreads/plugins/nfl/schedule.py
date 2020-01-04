@@ -9,7 +9,7 @@ from collections import namedtuple
 import requests
 import pytz
 from .nflteams import get_team
-from .sites import sites
+from .sites import sites, NFL_DEFAULT_TZ
 
 WEEK = timedelta(days=7)
 
@@ -120,10 +120,12 @@ def parse_schedule(data):
     for div in soup.find_all("div", class_="schedules-list-content"):
         eid = div['data-gameid']
         site = div['data-site']
-        if site in sites:
+        if not site:
+            tz, place = NFL_DEFAULT_TZ, None
+        elif site in sites:
             tz, place = sites[site]
         else:
-            raise Exception("Unknown site %s" % site)
+            raise Exception("Unknown site for %s: '%s'" % (eid, site))
         if not div['data-localtime']:
             div['data-localtime'] = "20:00:01"
         date_str = eid[0:8] + 'T' + div['data-localtime']

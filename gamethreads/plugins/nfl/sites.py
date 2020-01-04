@@ -7,6 +7,8 @@ MST_NODST = pytz.timezone('US/Arizona') # No DST
 MST = pytz.timezone('America/Denver')
 GMT = pytz.timezone('Europe/London')
 
+NFL_DEFAULT_TZ = EST
+
 sites = {
         'Gillette Stadium': [EST, 'United_States/Massachusetts/Foxborough'],
         'Georgia Dome': [EST, 'United_States/Georgia/Atlanta'],
