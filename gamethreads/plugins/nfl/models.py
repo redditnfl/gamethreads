@@ -2,6 +2,7 @@ import json
 import re
 from datetime import timedelta
 
+import pytz
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Boolean, Numeric
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.session import Session
@@ -260,6 +261,16 @@ class NFLGame(Base):
             return self.kickoff_utc
         else:
             return self.kickoff_utc.astimezone(self.local_tz)
+
+    def kickoff_tz(self, tz=None):
+        if tz is None:
+            if self.local_tz is None:
+                tz = pytz.UTC
+            else:
+                tz = self.local_tz
+        else:
+            tz = pytz.timezone(tz)
+        return self.kickoff_utc.astimezone(tz)
 
     @property
     def updated(self):
