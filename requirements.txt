@@ -5,7 +5,7 @@ chardet==3.0.4
 -e git+git@github.com:redditnfl/gamethreads.git@582b8a1345bab5338fabed865c6070fdba323db5#egg=gamethreads
 html5lib==0.999999999
 idna==2.8
-Jinja2==2.10.1
+Jinja2==2.11.3
 MarkupSafe==1.1.1
 percache==0.3.0
 pkg-resources==0.0.0
