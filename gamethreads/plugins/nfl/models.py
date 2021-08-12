@@ -15,21 +15,17 @@ from . import const
 class NFLTeam(Base):
     __tablename__ = 'nfl_team'
 
-    id = Column(String(length=3), primary_key=True)
+    id = Column(String, primary_key=True)
+    abbreviation = Column(String(length=3))
     city = Column(String)
     mascot = Column(String)
     subreddit = Column(String)
     twitter = Column(String)
+    fullname = Column(String)
     record_won = Column(Integer)
     record_lost = Column(Integer)
     record_tied = Column(Integer)
     record_updated_utc = Column(DateTime(timezone=True))
-
-    @property
-    def fullname(self):
-        if self.id in ['NPR', 'APR']:
-            return self.city
-        return "{0.city} {0.mascot}".format(self)
 
     @property
     def record_games(self):
@@ -44,7 +40,7 @@ class NFLTeam(Base):
         w, l, t = (self.record_won, self.record_lost, self.record_tied)
         # See if any games ended after the record was updated and add the result
         for game in self.games:
-            if game.game_type == const.POST:
+            if game.season_type == const.POST:
                 # Disable adjusting for playoff games
                 continue
             adjusted = False
@@ -76,7 +72,9 @@ class NFLTeam(Base):
     @property
     def formatted_record(self):
         w, l, t = self.record
-        if None in (w, l, t):
+        if (w, l, t) == (None, None, None):
+            return "0-0"
+        if None in (w, l):
             return ""
         if t:
             return "{0}-{1}-{2}".format(w, l, t)
@@ -231,21 +229,23 @@ class NFLGame(Base):
     __tablename__ = 'nfl_game'
 
     id = Column(Integer, primary_key=True) 
-    eid = Column(String, unique=True)
+    shieldid = Column(String, unique=True)
+    game_detail_id = Column(String, unique=True)
     game_id = Column(Integer, ForeignKey('game.id'))
     game = relationship("Game", backref=backref('nfl_game', uselist=False), foreign_keys='NFLGame.game_id', lazy='joined')
-    home_id = Column(String(3), ForeignKey('nfl_team.id'))
-    home = relationship("NFLTeam", backref=backref('home_games', order_by=eid), foreign_keys='NFLGame.home_id', lazy='joined')
-    away_id = Column(String(3), ForeignKey('nfl_team.id'))
-    away = relationship("NFLTeam", backref=backref('away_games', order_by=eid), foreign_keys='NFLGame.away_id', lazy='joined')
+    kickoff_utc = Column(DateTime(timezone=True))
+    home_id = Column(String, ForeignKey('nfl_team.id'))
+    home = relationship("NFLTeam", backref=backref('home_games', order_by=kickoff_utc), foreign_keys='NFLGame.home_id', lazy='joined')
+    away_id = Column(String, ForeignKey('nfl_team.id'))
+    away = relationship("NFLTeam", backref=backref('away_games', order_by=kickoff_utc), foreign_keys='NFLGame.away_id', lazy='joined')
     home_score = Column(Integer)
     away_score = Column(Integer)
     seconds_left = Column(Integer, nullable=True)
-    kickoff_utc = Column(DateTime(timezone=True))
     state = Column(Enum(*const.GS, name='NFL_GAME_STATE'))
     updated_utc = Column(DateTime(timezone=True))
     season = Column(Integer)
-    game_type = Column(Enum(*const.GAME_TYPES, name='NFL_GAME_TYPE')) # PRE/REG/POST
+    season_type = Column(Enum(*const.SEASON_TYPES, name='NFL_SEASON_TYPE')) # PRE/REG/POST/PRO
+    week_type = Column(Enum(*const.WEEK_TYPES, name='NFL_WEEK_TYPE')) # HOF/PRE/REG/WC/DIV/CONF/SB/PRO
     week = Column(String(length=25))
     tv = Column(String)
     site = Column(String)
@@ -353,7 +353,7 @@ class NFLGame(Base):
             return False
 
     def __repr__(self):
-        return "<Game(eid=%s,home=%s,away=%s)>" % (self.eid, self.home, self.away)
+        return "<Game(id=%s,home=%s,away=%s)>" % (self.id, self.home, self.away)
 
     def __str__(self):
         return "{0.away.id} @ {0.home.id}".format(self)

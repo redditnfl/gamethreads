@@ -87,7 +87,7 @@ class Thread(Base):
         return "<Thread(id={0.id}, thread_id={0.thread_id})>".format(self)
 
 
-if __name__ == "__main__":
+def main():
     import sys
     if len(sys.argv) <= 1 or sys.argv[1] not in ('create_all', 'drop_all'):
         print("Usage: %s create_all|drop_all" % sys.argv[0])
@@ -100,6 +100,20 @@ if __name__ == "__main__":
     session = sessionmaker(bind=engine)
     cmd = sys.argv[1]
     if cmd == 'create_all':
+        from . import plugins
         Base.metadata.create_all(engine)
     elif cmd == 'drop_all':
+        # Thank you univerio https://stackoverflow.com/a/38679457
+        from sqlalchemy.schema import DropTable
+        from sqlalchemy.ext.compiler import compiles
+        from . import plugins
+
+        @compiles(DropTable, "postgresql")
+        def _compile_drop_table(element, compiler, **kwargs):
+            return compiler.visit_drop_table(element) + " CASCADE"
+
         Base.metadata.drop_all(engine)
+
+
+if __name__ == "__main__":
+    main()

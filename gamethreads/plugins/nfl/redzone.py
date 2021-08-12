@@ -36,7 +36,7 @@ def print_diff(before, after, thread):
     print(diff)
 
 def find_submission(r, regex):
-    for s in r.user.me().submissions.new(limit=50):
+    for s in r.user.me().submissions.new(limit=150):
         if re.match(regex, s.title):
             time = pytz.UTC.localize(datetime.utcfromtimestamp(s.created_utc)).astimezone(EST)
             return s, time.replace(hour=0, minute=0, second=0)
@@ -57,12 +57,13 @@ def main():
     table  = "|             |          |   |    |   |          |   |                |                      |\n"
     table += "|:------------|:--------:|--:|:--:|:--|:--------:|--:|:--------------:|:--------------------:|\n"
     table += "| **Kickoff** | **Away** |   |    |   | **Home** |   | **Gamethread** | **Post Game Thread** |\n"
-    for nflgame in session.query(NFLGame).filter(NFLGame.kickoff_utc > day, NFLGame.kickoff_utc <= nextday).order_by(NFLGame.kickoff_utc, NFLGame.eid):
+    for nflgame in session.query(NFLGame).filter(NFLGame.kickoff_utc > day, NFLGame.kickoff_utc <= nextday).order_by(NFLGame.kickoff_utc, NFLGame.shieldid):
         threads = {}
         for thread in nflgame.game.threads:
             if thread.sub.name == sub:
                 threads[thread.thread_type] = thread
-        table += "|{kickoff:%-I:%M %p}|[*{0.away.id}*](/r/{0.away.subreddit}) | {0.away_score} | at | {0.home_score} | [*{0.home.id}*](/r/{0.home.subreddit}) | {0.state} | {gt} | {pgt}|\n".format(nflgame, gt=make_link(threads, 'gamethread'), pgt=make_link(threads, 'post_gamethread'), kickoff=nflgame.kickoff_utc.astimezone(EST))
+        table += "|{kickoff:%-I:%M %p}|[*{0.away.abbreviation}*](/r/{0.away.subreddit}) | {0.away_score} | at | {0.home_score} | [*{0.home.abbreviation}*](/r/{0.home.subreddit}) | {0.state} | {gt} | {pgt}|\n".format(nflgame, gt=make_link(threads, 'gamethread'), pgt=make_link(threads, 'post_gamethread'), kickoff=nflgame.kickoff_utc.astimezone(EST))
+        #print("%s @ %s - %s" % (nflgame.away.abbreviation, nflgame.home.abbreviation, nflgame.kickoff_utc.astimezone(EST)))
 
     body = rz_thread.selftext
     newbody = my_replace(MARKER_START, MARKER_END, table, body)

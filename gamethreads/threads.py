@@ -11,6 +11,7 @@ from requests.exceptions import HTTPError
 from jinja2.sandbox import SandboxedEnvironment
 from praw import Reddit
 import pytz
+import roman
 
 from .SubredditCustomConfig import SubredditCustomConfig
 from .models import *
@@ -84,7 +85,9 @@ class Renderer:
             self.envs = {}
         key = sub.display_name # Not sure using the sub itself would work
         if key not in self.envs:
-            self.envs[key] = SandboxedEnvironment(loader=RedditWikiLoader(sub, 'gamethreads/templates', timedelta(minutes=5)))
+            self.envs[key] = SandboxedEnvironment(loader=RedditWikiLoader(sub, 'gamethreads/templates', timedelta(minutes=1)))
+            self.envs[key].filters['to_roman'] = roman.toRoman
+            self.envs[key].filters['from_roman'] = roman.fromRoman
         return self.envs[key]
 
     def render_thread(self, reddit_sub, sub, thread_config, game, thread = None):

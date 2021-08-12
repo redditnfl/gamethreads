@@ -28,15 +28,11 @@ REQUIRED = [
     'praw>=5.1.0,<6',
     'pytz',
     'python-yr>=1.4.5,<2',
-<<<<<<< HEAD
     'PyYAML>=5.1,<6',
     'SQLAlchemy>=1.3.0,<1.4',
-=======
-    'PyYAML>=3.12,<6',
-    'SQLAlchemy>=1.1.14,<1.2',
->>>>>>> 2fc87109654210564f2d17ba6eeb1ab1b1900f74
     'ujson>=1.35,<2',
     'psycopg2>=2.7.3.1,<3',
+    'roman>=3.3,<4',
 ]
 
 # The rest you shouldn't have to touch too much :)
@@ -106,6 +102,7 @@ setup(
     entry_points={
         'console_scripts': [
             'gamethreads=gamethreads.gamethreader:main',
+            'models=gamethreads.models:main',
             'redzone=gamethreads.plugins.nfl.redzone:main',
             'schedule=gamethreads.plugins.nfl.schedule:main',
             ],

@@ -1,11 +1,18 @@
 from datetime import timedelta, datetime
+from pprint import pprint
 from urllib.request import urlopen
 import urllib
 import ujson
 from sqlalchemy import func
 from sqlalchemy.sql import exists
+from sqlalchemy.orm import aliased
+from sgqlc.operation import Operation
 
-from . import nflteams, nflcom, espn, nfllive, schedule, sites
+#from . import nflteams, nflcom, espn, nfllive, schedule, sites
+from . import espn, sites, nflteams
+
+from nflapi import NFL, shield
+from nflapi.shield import OrderByDirection, WeekOrderBy
 
 from ...util import get_or_create, now
 from ...basethread import GameThreadThread
@@ -38,16 +45,19 @@ def decide_sleep(session, NFLGame, active_interval, interval):
 class NFLBoxscoreUpdater(GameThreadThread):
     interval = timedelta(minutes=15)
     active_interval = timedelta(minutes=2)
+    nfl = NFL('gamethread/boxscore')
     
     def lap(self):
         session = self.Session()
+        # Should probably get all at once
         # Make sure all games get a final update, even after they are completed
-        for game in self.unarchived_games().join(Game.nfl_game).filter(NFLGame.state != GS_PENDING):
+        for game in self.unarchived_games().join(Game.nfl_game).filter(NFLGame.state != GS_PENDING).filter(NFLGame.game_detail_id != None):
             self.logger.info("Updating boxscore for %r", game)
-            gamedata, created = get_or_create(session, NFLGameData, game=game)
-            json = self.get_json(game.game_id)
+            json = self.get_json(game.nfl_game.game_detail_id)
             if not json:
+                self.logger.info("No data found for %r, skipping", game)
                 continue
+            gamedata, created = get_or_create(session, NFLGameData, game=game)
             if 'drives' in json:
                 del(json['drives'])
             gamedata.content = json
@@ -62,109 +72,161 @@ class NFLBoxscoreUpdater(GameThreadThread):
             self.logger.debug("Shortened sleep: %s", new_int)
             return new_int
 
-    def get_json(self, eid):
-        fmt = 'http://www.nfl.com/liveupdate/game-center/{eid}/{eid}_gtd.json'
-        url = fmt.format(eid=eid)
+    def get_json(self, game_detail_id):
+        if not game_detail_id:
+            return
         try:
-            return ujson.load(urlopen(url))[eid]
+            op = Operation(shield.Viewer)
+            gd = op.viewer.league.game_detail(id=game_detail_id)
+            gd.home_points_q1()
+            gd.home_points_q2()
+            gd.home_points_q3()
+            gd.home_points_q4()
+            gd.home_points_total()
+            gd.home_points_overtime()
+            gd.home_points_overtime_total()
+            gd.visitor_points_q1()
+            gd.visitor_points_q2()
+            gd.visitor_points_q3()
+            gd.visitor_points_q4()
+            gd.visitor_points_total()
+            gd.visitor_points_overtime()
+            gd.visitor_points_overtime_total()
+            #gd.game_injuries()
+            gd.scoring_summaries()
+            gd.coin_toss_results()
+            #gd.live_home_team_game_stats()
+            #gd.live_home_player_game_stats()
+            #gd.live_visitor_team_game_stats()
+            #gd.live_visitor_player_game_stats()
+            result, json = self.nfl.query(op, return_json=True)
+            json = json['data']['viewer']['league']['gameDetail']
+            return json
         except Exception as e:
-            self.logger.exception("Error getting boxscore for %s", eid)
+            self.logger.exception("Error getting boxscore for %s", game_detail_id)
             
 
 class NFLTeamDataUpdater(GameThreadThread):
     interval = timedelta(minutes=30)
+    setup = True # Indicates that we want to be run once before threads are started
+    nfl = NFL('gamethread/teamdata')
 
     def lap(self):
         session = self.Session()
         teams = session.query(NFLTeam)
+        records = self.get_records()
         for team in teams.all():
             try:
-                if team.id in ['AFC', 'NFC', 'APR', 'NPR']:
-                    continue
-                record = nflcom.get_record(team.id)
-                if record != (team.record_won, team.record_lost, team.record_tied):
-                    self.logger.info("Updating record for %s to %r", team, record)
+                record = records.get(team.id, None)
+                if record and record != (team.record_won, team.record_lost, team.record_tied):
+                    self.logger.info("Updating record for %r to %r", team, record)
                     team.record = record
             except Exception as e:
                 self.logger.exception("Error updating record for %r", team)
         session.commit()
+
+    def get_records(self):
+        # Grab all record objects for the latest week
+        # That should be the current records, if I'm not mistaken
+        op = Operation(shield.Viewer)
+        standings = op.viewer.teams_group.standings(first=1, week_season_value=0, order_by=WeekOrderBy.week__weekOrder, order_by_direction=OrderByDirection.DESC)
+        records = standings.edges.node()
+        team_records = records.team_records()
+        team_records.team_id()
+        team_records.overall_win()
+        team_records.overall_loss()
+        team_records.overall_tie()
+        records = self.nfl.query(op).viewer.teams_group.standings.edges[0].node.team_records
+        return {r.team_id: (r.overall_win, r.overall_loss, r.overall_tie) for r in records}
 
 
 class NFLGameStateUpdater(GameThreadThread):
     interval = timedelta(minutes=15)
     active_interval = timedelta(seconds=30)
     setup = True
+    nfl = NFL('gamethread/gamestate')
+
+    def get_game_detail_ids(self, ids):
+        op = Operation(shield.Viewer)
+        game = op.viewer.league.games_by_ids(ids=ids)
+        game.id()
+        game.game_detail_id()
+        result = self.nfl.query(op)
+        return [game for game in result.viewer.league.games_by_ids if hasattr(game, 'game_detail_id')]
 
     def lap(self):
         session = self.Session()
-#        live_games = nfllive.get_games()['games']
-#        if live_games is None or len(live_games) == 0:
-#            self.logger.warning("No games found. Skipping")
-#            return
-#, url='http://rasher.dk/tmp/ss.xml'
+        games = self.unarchived_games().filter(NFLGame.game_detail_id == None)
+        lut = {game.game_id: game for game in games}
+        for gdi in self.get_game_detail_ids([game.game_id for game in games]):
+            lut[gdi.id].game_detail_id = gdi.game_detail_id
 
-        prop_map = {
-                'state':('q',None),
-                'home_id':('home',None),
-                'away_id':('away',None),
-                'clock':('clock',lambda s: '--:--' if s == '' else s),
-                'home_score':('home_score',int),
-                'away_score':('away_score',int),
-#                'kickoff_utc':('time_tz',lambda t: t.astimezone(UTC)),
-                }
-
-        lookahead = timedelta(hours=24)
-        cutoff = now() + lookahead
-        games = self.unarchived_games()
-        for active_game in games:
-            boxscore = self.get_json(active_game.game_id)
-            if not boxscore:
-                self.logger.warning("Could not get boxscore for %s", active_game.game_id)
-                continue
-            game_state = {
-                    'eid': active_game.game_id,
-                    'q': nfllive.q(boxscore['qtr']),
-                    'home': boxscore['home']['abbr'],
-                    'away': boxscore['away']['abbr'],
-                    'clock': boxscore['clock'],
-                    'home_score': boxscore['home']['score']['T'],
-                    'away_score': boxscore['away']['score']['T'],
-                    }
-
-            self.logger.debug("Updating state for %s", game_state['eid'])
-#            if game_state['eid'] not in games:
-#                self.logger.warning("Parent Game object not found for eid=%s, skipping", game_state['eid'])
-#                self.logger.debug("Active games: %r", games)
-#                continue
-            if 'TBD' in (game_state['home'], game_state['away']):
-                self.logger.warning("Game participants still TBD for eid=%s, skipping", game_state['eid'])
-                continue
-#            active_game = games[game_state['eid']]
-            game, created = get_or_create(session, NFLGame, game=active_game, eid=game_state['eid'])
-#            if created:
-#                game.kickoff_utc = game_state['time_tz'].astimezone(UTC)
-            updated = False
-            for x, (y, f) in prop_map.items():
-                new = game_state[y]
-                old = game.__getattribute__(x)
-                if f is not None:
-                    new = f(new)
-                if old != new:
-                    game.__setattr__(x, new)
-                    self.logger.debug("%s changed %s -> %s", x, old, new)
-                    updated = True
-                    if x == 'state':
-                        self.logger.info("New state for %s", game_state['eid'])
-                        self.generate_events(active_game, old, new, session)
-            if updated:
-                self.logger.debug("Game was updated %s", game_state['eid'])
-                game.updated_utc = now()
+        games = self.unarchived_games().join(Game.nfl_game, full=True).filter(NFLGame.game_detail_id != None)
+        lut = {game.nfl_game.game_detail_id: game for game in games}
+        ids = lut.keys()
+        for gd in self.get_game_details(ids):
+            game = lut[gd.id]
+            nflgame = game.nfl_game
+            nflgame.home_score = gd.home_points_total
+            nflgame.away_score = gd.visitor_points_total
+            old = nflgame.state
+            new = self.state(gd.phase, gd.period)
+            nflgame.state = new
+            if old != new:
+                self.logger.info("New state for %r -> %s", nflgame, new)
+                self.generate_events(game, old, new, session)
+            if new in GS_FINAL:
+                nflgame.seconds_left = None
+            else:
+                nflgame.clock = gd.game_clock
+            nflgame.updated_utc = now()
+        
         session.commit()
         new_int = decide_sleep(session, NFLGame, self.active_interval, self.interval) 
         session.close()
         if new_int:
             self.logger.debug("Shortened sleep: %s", new_int)
             return new_int
+
+    def state(self, phase, period):
+        if phase == shield.Phase.INGAME:
+            return [GS_Q1, GS_Q2, GS_Q3, GS_Q4, GS_OT, GS_OT][period-1]
+            pass
+        mapping = {
+                shield.Phase.PREGAME: GS_PENDING,
+                shield.Phase.HALFTIME: GS_HT,
+                shield.Phase.SUSPENDED: GS_SUSPENDED,
+                shield.Phase.FINAL: GS_F,
+                shield.Phase.FINAL_OVERTIME: GS_FO,
+                }
+        return mapping[phase]
+
+    def get_game_details(self, ids):
+        if len(ids) == 0:
+            return []
+        op = Operation(shield.Viewer)
+        gd = op.viewer.league.game_details_by_ids(ids=ids)
+        gd.id()
+        gd.game_clock()
+        gd.home_points_q1()
+        gd.home_points_q2()
+        gd.home_points_q3()
+        gd.home_points_q4()
+        gd.home_points_total()
+        gd.home_points_overtime()
+        gd.home_points_overtime_total()
+        gd.visitor_points_q1()
+        gd.visitor_points_q2()
+        gd.visitor_points_q3()
+        gd.visitor_points_q4()
+        gd.visitor_points_total()
+        gd.visitor_points_overtime()
+        gd.visitor_points_overtime_total()
+        gd.period()
+        gd.phase()
+
+        result = self.nfl.query(op)
+        return result.viewer.league.game_details_by_ids
 
     def generate_events(self, game, from_gs, to_gs, session):
         self.logger.debug("State change %s -> %s for %s", from_gs, to_gs, game)
@@ -200,29 +262,41 @@ class NFLGameStateUpdater(GameThreadThread):
             events = []
         return events
     
-    def get_json(self, eid):
-        """Copy-pasted, eek"""
-        fmt = 'http://www.nfl.com/liveupdate/game-center/{eid}/{eid}_gtd.json'
-        url = fmt.format(eid=eid)
-        try:
-            return ujson.load(urlopen(url))[eid]
-        except urllib.error.HTTPError as e:
-            self.logger.info("Could not get boxscore for %s - not started?", eid)
-        except Exception as e:
-            self.logger.exception("Error getting boxscore for %s", eid)
 
 class NFLTeamUpdater(GameThreadThread):
     interval = timedelta(hours=12)
     setup = True # Indicates that we want to be run once before threads are started
+    nfl = NFL('gamethread/team')
 
     def lap(self):
         session = self.Session()
-        for short, info in nflteams.fullinfo.items():
-            t, created = get_or_create(session, NFLTeam, id=short, city=info['city'], mascot=info['mascot'], subreddit=info['subreddit'].replace('/r/',''), twitter=info['twitter'])
+        for team in self.get_teams():
+            t, created = get_or_create(session, NFLTeam, id=team.id)
+            t.abbreviation = team.abbreviation
+            t.city = team.city_state_region
+            t.mascot = team.nick_name
+            t.fullname = team.full_name
+            teaminfo = nflteams.get_team(t.abbreviation)
+            if teaminfo:
+                t.subreddit = teaminfo['subreddit'].replace('/r/', '')
+            t.twitter = ''
             if created:
                 self.logger.info("Adding team %r", t)
                 session.add(t)
+
         session.commit()
+
+    def get_teams(self):
+        op = Operation(shield.Viewer)
+        team_q = op.viewer.league.current.season.teams()
+        team_q.id()
+        team_q.city_state_region()
+        team_q.abbreviation()
+        team_q.nick_name()
+        team_q.full_name()
+        result = self.nfl.query(op)
+        return result.viewer.league.current.season.teams
+
 
 class NFLLineUpdater(GameThreadThread):
     interval = timedelta(hours=1)
@@ -231,7 +305,9 @@ class NFLLineUpdater(GameThreadThread):
     def lap(self):
         session = self.Session()
         for (home, away), lines in espn.get_lines().items():
-            nflgame = session.query(NFLGame).filter(NFLGame.home_id == home, NFLGame.away_id == away).order_by(NFLGame.kickoff_utc.desc()).first()
+            ht = aliased(NFLTeam)
+            at = aliased(NFLTeam)
+            nflgame = session.query(NFLGame).join(ht, NFLGame.home).join(at, NFLGame.away).filter(ht.abbreviation == home, at.abbreviation == away).order_by(NFLGame.kickoff_utc.desc()).first()
             if nflgame is None:
                 self.logger.warning("No game found for %s@%s", away, home)
                 continue
@@ -241,48 +317,79 @@ class NFLLineUpdater(GameThreadThread):
                 line.total = total
         session.commit()
 
+
 class NFLScheduleInfoUpdater(GameThreadThread):
     interval = timedelta(hours=1)
     setup = True
+    nfl = NFL('gamethread/schedule')
 
     def lap(self):
         session = self.Session()
-        season, game_type, week = schedule.get_week(now().date())
-        for game in schedule.get_schedule(season, game_type, week):
-            self.logger.debug("Updating schedule info for game %s", game.eid)
-            if game.home is None or game.away is None:
-                self.logger.warning("Game %s has None home or away, skipping", game.eid)
+        
+        base_games = self.pending_games()
+        ids = [game.game_id for game in self.pending_games()]
+        
+        for sg in self.get_games(ids):
+            if not hasattr(sg, 'id'):
                 continue
-            basegame = session.query(Game).filter(Game.game_id == game.eid).one_or_none()
-            if basegame is None:
-                self.logger.info("Game %s does not exist, skipping", game.eid)
-                continue
-            nflgame, created = get_or_create(session, NFLGame, game=basegame, eid=basegame.game_id)
+            base_game = session.query(Game).filter(Game.game_id == sg.id).one()
+            nflgame, created = get_or_create(session, NFLGame, game=base_game, shieldid=sg.id)
+            
+            game = sg
+            
+            nflgame.home_id = game.home_team.id
+            nflgame.away_id = game.away_team.id
+            nflgame.season = game.week.season_value
+            nflgame.season_type = game.week.season_type
+            nflgame.week_type = game.week.week_type
+            nflgame.week = game.week.week_value
+            nflgame.game_detail_id = game.game_detail_id
+            if game.network_channels: # TV info disappears after game has played
+                nflgame.tv = ", ".join(game.network_channels)
+            nflgame.site = game.venue.display_name
+            if nflgame.site in sites.sites:
+                nflgame.place = sites.sites[nflgame.site][1]
+            else:
+                raise Exception("Unknown site: %s" % nflgame.site)
+            if game.game_time:
+                nflgame.kickoff_utc = game.game_time
+
             if created:
-                self.logger.info("Adding NFLGame for %s", game.eid)
+                self.logger.info("Adding NFLGame for %r", game)
                 nflgame.home_score = 0
                 nflgame.away_score = 0
-                if game.date < now():
+                if game.game_time > now():
                     nflgame.state = GS_PENDING
                 else:
                     nflgame.state = GS_UNKNOWN
-
-            nflgame.home_id = game.home['short']
-            nflgame.away_id = game.away['short']
-            nflgame.season = season
-            nflgame.game_type = game_type
-            nflgame.week = week
-            if game.tv: # TV info disappears after game has played
-                nflgame.tv = game.tv
-            nflgame.site = game.site
-            nflgame.place = game.place
-            if game.date:
-                nflgame.kickoff_utc = game.date
-            else:
-                self.logger.warn("No kickoff for game %s", game.eid)
-            if game.eid == '2018092311':
-                game.date -= timedelta(hours=1)
+        
         session.commit()
+
+    def get_games(self, ids):
+        op = Operation(shield.Viewer)
+        game = op.viewer.league.games_by_ids(ids=ids)
+        game.id()
+        game.game_detail_id()
+        game.game_time()
+        game.network_channels()
+        home = game.home_team()
+        away = game.away_team()
+        home.id()
+        away.id()
+        venue = game.venue()
+        venue.display_name()
+        venue.full_name()
+        venue.country()
+        venue.state()
+        venue.city()
+        week = game.week()
+        week.season_value()
+        week.week_value()
+        week.season_type()
+        week.week_type()
+        result = self.nfl.query(op)
+        return result.viewer.league.games_by_ids
+
 
 class NFLForecastUpdater(GameThreadThread):
     interval = timedelta(minutes=10)
@@ -327,10 +434,10 @@ class NFLForecastUpdater(GameThreadThread):
 
 ALL = [
         NFLTeamUpdater,
+        NFLTeamDataUpdater,
+        NFLScheduleInfoUpdater,
         NFLBoxscoreUpdater,
         NFLGameStateUpdater,
-        NFLTeamDataUpdater,
-        NFLLineUpdater,
-        NFLScheduleInfoUpdater,
         NFLForecastUpdater,
+        NFLLineUpdater,
         ]

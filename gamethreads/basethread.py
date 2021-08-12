@@ -51,6 +51,9 @@ class GameThreadThread(threading.Thread):
     def unarchived_games(self):
         return self.games().filter(Game.state != Game.ARCHIVED)
 
+    def pending_games(self):
+        return self.games().filter(Game.state == Game.PENDING)
+
     def games(self):
         games = self.Session().query(Game)
         if self.game_type is None:

@@ -12,7 +12,7 @@ def find_games():
     now = nfl.schedule.current_week()
 
     op = Operation(shield.Viewer)
-    games = op.viewer.league.games_by_week(week_season_value=now.current_season['default'], week_season_type=now.current_season_type['default'], week_week_value=now.current_week['default'])
+    games = op.viewer.league.games_by_week(week_season_value=now.season_value, week_season_type=now.season_type, week_week_value=now.week_value)
     games.id()
     result = nfl.query(op)
     return [g.id for g in result.viewer.league.games_by_week]
