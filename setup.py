@@ -30,7 +30,7 @@ REQUIRED = [
     'python-yr>=1.4.5,<2',
     'PyYAML>=5.1,<6',
     'SQLAlchemy>=1.3.0,<1.4',
-    'ujson>=1.35,<2',
+    'ujson>=1.35,<6',
     'psycopg2>=2.7.3.1,<3',
     'roman>=3.3,<4',
 ]
