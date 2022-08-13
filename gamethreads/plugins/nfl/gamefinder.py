@@ -10,12 +10,9 @@ def find_games():
     Return game ids"""
     nfl = NFL('gamethread/finder')
     now = nfl.schedule.current_week()
+    games = nfl.game.week_games(now.week_value, now.season_type, now.season_value)
 
-    op = Operation(shield.Viewer)
-    games = op.viewer.league.games_by_week(week_season_value=now.season_value, week_season_type=now.season_type, week_week_value=now.week_value)
-    games.id()
-    result = nfl.query(op)
-    return [g.id for g in result.viewer.league.games_by_week]
+    return [g.id for g in games]
 
 def update_state(game):
     """Update the state of a game if necessary"""
