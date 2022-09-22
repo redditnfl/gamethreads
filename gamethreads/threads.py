@@ -204,6 +204,7 @@ class ThreadUpdater(GameThreadThread):
                         submission = self.r.submission(id=thread.thread_id)
                         submission.edit(body)
                         thread.body = body
+                        time.sleep(3)
                 except Exception as e:
                     self.logger.exception("Updating submission %s failed", thread)
         self.session.commit()
