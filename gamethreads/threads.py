@@ -39,7 +39,7 @@ class GameUpdater(GameThreadThread):
             game.state = Game.ARCHIVED
 
         for game_type in config['types']:
-            self.logger.info("Finding new games for type %s", game_type)
+            self.logger.debug("Finding new games for type %s", game_type)
             finder = getattr(plugins, game_type).gamefinder
             game_ids = finder.find_games()
             for game_id in game_ids:
@@ -48,7 +48,7 @@ class GameUpdater(GameThreadThread):
                     self.logger.info("New game %r", game)
                     session.add(game)
             # Update states of pending and active games
-            self.logger.info("Updating games for type %s", game_type)
+            self.logger.debug("Updating games for type %s", game_type)
             for game in session.query(Game).filter(or_(Game.state.in_([Game.PENDING, Game.ACTIVE]), Game.state == None), Game.game_type == game_type):
                 self.logger.debug("Getting updated state for %r", game)
                 before = game.state
@@ -200,7 +200,7 @@ class ThreadUpdater(GameThreadThread):
                     thread_config = list(filter(lambda x: x['id'] == thread.thread_type, sub.config['threads']))[0]
                     title, body = self.renderer.render_thread(reddit_sub, sub, thread_config, game, thread)
                     if body != thread.body:
-                        self.logger.info("Updating thread %s", thread)
+                        self.logger.debug("Updating thread %s", thread)
                         submission = self.r.submission(id=thread.thread_id)
                         submission.edit(body)
                         thread.body = body
@@ -235,7 +235,7 @@ class ConfigUpdater(GameThreadThread):
 
     def update_subreddits(self, sr_names):
         for sr_name in sr_names:
-            self.logger.info("Updating config for %s", sr_name)
+            self.logger.debug("Updating config for %s", sr_name)
             session = self.Session()
             obj, created = get_or_create(session, Subreddit, name=sr_name)
             sr = self.r.subreddit(sr_name)

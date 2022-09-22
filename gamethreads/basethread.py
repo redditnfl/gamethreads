@@ -27,7 +27,7 @@ class GameThreadThread(threading.Thread):
                     sleep_until = now() + interval_override
                 else:
                     sleep_until = now() + self.interval
-                self.logger.info("Lap done - time to rest until %s", sleep_until)
+                self.logger.debug("Lap done - time to rest until %s", sleep_until)
                 while self.staying_alive and sleep_until > (now() + self.wait_step):
                     time.sleep(self.wait_step.seconds)
                 if self.staying_alive:
