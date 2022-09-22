@@ -3,6 +3,7 @@ from pprint import pprint
 from urllib.request import urlopen
 import urllib
 import ujson
+import pendulum
 from sqlalchemy import func
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import aliased
@@ -52,12 +53,15 @@ class NFLBoxscoreUpdater(GameThreadThread):
         # Should probably get all at once
         # Make sure all games get a final update, even after they are completed
         for game in self.unarchived_games().join(Game.nfl_game).filter(NFLGame.state != GS_PENDING).filter(NFLGame.game_detail_id != None):
-            self.logger.info("Updating boxscore for %r", game)
+            self.logger.debug("Updating boxscore for %r", game)
+            gamedata, created = get_or_create(session, NFLGameData, game=game)
+            if gamedata.final:
+                self.logger.debug("Game %r is final, skipping", game)
+                continue
             json = self.get_json(game.nfl_game.game_detail_id)
             if not json:
-                self.logger.info("No data found for %r, skipping", game)
+                self.logger.debug("No data found for %r, skipping", game)
                 continue
-            gamedata, created = get_or_create(session, NFLGameData, game=game)
             if 'drives' in json:
                 del(json['drives'])
             gamedata.content = json
@@ -99,7 +103,7 @@ class NFLBoxscoreUpdater(GameThreadThread):
             #gd.live_home_player_game_stats()
             #gd.live_visitor_team_game_stats()
             #gd.live_visitor_player_game_stats()
-            result, json = self.nfl.query(op, return_json=True)
+            result, json = self.nfl.shield.query(op, return_json=True)
             json = json['data']['viewer']['league']['gameDetail']
             return json
         except Exception as e:
@@ -128,16 +132,9 @@ class NFLTeamDataUpdater(GameThreadThread):
     def get_records(self):
         # Grab all record objects for the latest week
         # That should be the current records, if I'm not mistaken
-        op = Operation(shield.Viewer)
-        standings = op.viewer.teams_group.standings(first=1, week_season_value=0, order_by=WeekOrderBy.week__weekOrder, order_by_direction=OrderByDirection.DESC)
-        records = standings.edges.node()
-        team_records = records.team_records()
-        team_records.team_id()
-        team_records.overall_win()
-        team_records.overall_loss()
-        team_records.overall_tie()
-        records = self.nfl.query(op).viewer.teams_group.standings.edges[0].node.team_records
-        return {r.team_id: (r.overall_win, r.overall_loss, r.overall_tie) for r in records}
+        week = self.nfl.schedule.current_week()
+        standings = self.nfl.football.standings_by_week(week.season_value, week.season_type, week.week_value).weeks[0].standings
+        return {r.team.id: (r.overall.wins, r.overall.losses, r.overall.ties) for r in standings} 
 
 
 class NFLGameStateUpdater(GameThreadThread):
@@ -147,24 +144,22 @@ class NFLGameStateUpdater(GameThreadThread):
     nfl = NFL('gamethread/gamestate')
 
     def get_game_detail_ids(self, ids):
-        op = Operation(shield.Viewer)
-        game = op.viewer.league.games_by_ids(ids=ids)
-        game.id()
-        game.game_detail_id()
-        result = self.nfl.query(op)
-        return [game for game in result.viewer.league.games_by_ids if hasattr(game, 'game_detail_id')]
+        return [(game_id, self.nfl.game.game_detail_id_for_id(game_id)) for game_id in ids]
 
     def lap(self):
         session = self.Session()
         games = self.unarchived_games().filter(NFLGame.game_detail_id == None)
         lut = {game.game_id: game for game in games}
-        for gdi in self.get_game_detail_ids([game.game_id for game in games]):
-            lut[gdi.id].game_detail_id = gdi.game_detail_id
+        for game_id, gdi in self.get_game_detail_ids([game.game_id for game in games]):
+            lut[game_id].game_detail_id = gdi
 
         games = self.unarchived_games().join(Game.nfl_game, full=True).filter(NFLGame.game_detail_id != None)
         lut = {game.nfl_game.game_detail_id: game for game in games}
         ids = lut.keys()
         for gd in self.get_game_details(ids):
+            if not hasattr(gd, 'id'):
+                # Sometimes we know the id of objects that don't exist (??)
+                continue
             game = lut[gd.id]
             nflgame = game.nfl_game
             nflgame.home_score = gd.home_points_total
@@ -225,7 +220,7 @@ class NFLGameStateUpdater(GameThreadThread):
         gd.period()
         gd.phase()
 
-        result = self.nfl.query(op)
+        result = self.nfl.shield.query(op)
         return result.viewer.league.game_details_by_ids
 
     def generate_events(self, game, from_gs, to_gs, session):
@@ -273,7 +268,7 @@ class NFLTeamUpdater(GameThreadThread):
         for team in self.get_teams():
             t, created = get_or_create(session, NFLTeam, id=team.id)
             t.abbreviation = team.abbreviation
-            t.city = team.city_state_region
+            t.city = team.location
             t.mascot = team.nick_name
             t.fullname = team.full_name
             teaminfo = nflteams.get_team(t.abbreviation)
@@ -287,15 +282,8 @@ class NFLTeamUpdater(GameThreadThread):
         session.commit()
 
     def get_teams(self):
-        op = Operation(shield.Viewer)
-        team_q = op.viewer.league.current.season.teams()
-        team_q.id()
-        team_q.city_state_region()
-        team_q.abbreviation()
-        team_q.nick_name()
-        team_q.full_name()
-        result = self.nfl.query(op)
-        return result.viewer.league.current.season.teams
+        week = self.nfl.schedule.current_week()
+        return self.nfl.football.teams_by_season(week.season_value).teams
 
 
 class NFLLineUpdater(GameThreadThread):
@@ -339,26 +327,30 @@ class NFLScheduleInfoUpdater(GameThreadThread):
             
             nflgame.home_id = game.home_team.id
             nflgame.away_id = game.away_team.id
-            nflgame.season = game.week.season_value
-            nflgame.season_type = game.week.season_type
-            nflgame.week_type = game.week.week_type
-            nflgame.week = game.week.week_value
-            nflgame.game_detail_id = game.game_detail_id
-            if game.network_channels: # TV info disappears after game has played
-                nflgame.tv = ", ".join(game.network_channels)
-            nflgame.site = game.venue.display_name
+            nflgame.season = game.season
+            nflgame.season_type = game.season_type
+            nflgame.week_type = game.week_type
+            nflgame.week = game.week
+            for ext in game.external_ids:
+                if ext.source == 'gamedetail':
+                    nflgame.game_detail_id = ext.id
+            channels = set()
+            for channel in game.broadcast_info.away_network_channels + game.broadcast_info.home_network_channels:
+                channels.add(channel)
+            nflgame.tv = ", ".join(channels)
+            nflgame.site = game.venue.name
             if nflgame.site in sites.sites:
                 nflgame.place = sites.sites[nflgame.site][1]
             else:
                 raise Exception("Unknown site: %s" % nflgame.site)
-            if game.game_time:
-                nflgame.kickoff_utc = game.game_time
+            if game.time:
+                nflgame.kickoff_utc = pendulum.parse(game.time).astimezone(pendulum.UTC)
 
             if created:
                 self.logger.info("Adding NFLGame for %r", game)
                 nflgame.home_score = 0
                 nflgame.away_score = 0
-                if game.game_time > now():
+                if nflgame.kickoff_utc > now():
                     nflgame.state = GS_PENDING
                 else:
                     nflgame.state = GS_UNKNOWN
@@ -366,34 +358,13 @@ class NFLScheduleInfoUpdater(GameThreadThread):
         session.commit()
 
     def get_games(self, ids):
-        op = Operation(shield.Viewer)
-        game = op.viewer.league.games_by_ids(ids=ids)
-        game.id()
-        game.game_detail_id()
-        game.game_time()
-        game.network_channels()
-        home = game.home_team()
-        away = game.away_team()
-        home.id()
-        away.id()
-        venue = game.venue()
-        venue.display_name()
-        venue.full_name()
-        venue.country()
-        venue.state()
-        venue.city()
-        week = game.week()
-        week.season_value()
-        week.week_value()
-        week.season_type()
-        week.week_type()
-        result = self.nfl.query(op)
-        return result.viewer.league.games_by_ids
+        for game_id in ids:
+            yield self.nfl.game.by_id(game_id)
 
 
 class NFLForecastUpdater(GameThreadThread):
     interval = timedelta(minutes=10)
-    setup = False
+    setup = True #False
 
     def lap(self):
         session = self.Session()
@@ -433,11 +404,11 @@ class NFLForecastUpdater(GameThreadThread):
 
 
 ALL = [
-        NFLTeamUpdater,
+        #NFLTeamUpdater,
         NFLTeamDataUpdater,
         NFLScheduleInfoUpdater,
         NFLBoxscoreUpdater,
         NFLGameStateUpdater,
-        NFLForecastUpdater,
+        #NFLForecastUpdater,
         NFLLineUpdater,
         ]
