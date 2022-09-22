@@ -1,3 +1,7 @@
+import pytz
+
+NFL_TZ = pytz.timezone('US/Eastern')
+
 GS_UNKNOWN = 'UNKNOWN'
 GS_PENDING = 'Not started'
 GS_Q1 = 'Q1'

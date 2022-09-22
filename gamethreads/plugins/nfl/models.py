@@ -342,7 +342,9 @@ class NFLGame(Base):
     def is_primetime(self):
         """A game is considered primetime if no other game starts within 2
         hours before or after the game's kickoff. This covers things like the
-        thanksgiving games as well"""
+        thanksgiving games as well. Or if it starts at 7pm Eastern or later"""
+        if self.kickoff.astimezone(const.NFL_TZ).hour >= 19:
+            return True
         margin = timedelta(hours=2)
         after = self.kickoff_utc - margin
         before = self.kickoff_utc + margin
