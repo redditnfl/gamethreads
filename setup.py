@@ -20,11 +20,9 @@ AUTHOR = 'Jonas Häggqvist'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'appdirs>=1.4.0,<2',
     'Jinja2>=2.10.1,<3',
     'beautifulsoup4>=4.6.0,<5',
-    'html5lib>=0.999999999,<1',
-    'percache>=0.3.0,<1',
+    'html5lib>=1.1,<1.2',
     'praw>=5.1.0,<6',
     'pytz',
     'python-yr>=1.4.5,<2',
@@ -33,6 +31,8 @@ REQUIRED = [
     'ujson>=1.35,<2',
     'psycopg2>=2.7.3.1,<3',
     'roman>=3.3,<4',
+    'MarkupSafe==2.0.1',
+    'nflapi @ git+https://git@github.com/rasher/nflapi@6846df73b0#egg=nflapi',
 ]
 
 # The rest you shouldn't have to touch too much :)

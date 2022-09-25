@@ -404,7 +404,7 @@ class NFLForecastUpdater(GameThreadThread):
 
 
 ALL = [
-        #NFLTeamUpdater,
+        NFLTeamUpdater,
         NFLTeamDataUpdater,
         NFLScheduleInfoUpdater,
         NFLBoxscoreUpdater,

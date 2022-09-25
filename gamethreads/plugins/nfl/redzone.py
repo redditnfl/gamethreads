@@ -43,7 +43,7 @@ def find_submission(r, regex):
     return None, None
 
 def main():
-    r = Reddit('gamethread')
+    r = Reddit()
     rz_thread, day = find_submission(r, sys.argv[1])
     if rz_thread is None:
         print("No thread found matching %s" % sys.argv[1])

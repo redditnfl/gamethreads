@@ -102,7 +102,7 @@ class ThreadPoster(GameThreadThread):
     interval = timedelta(seconds=15)
 
     def __init__(self, *args, **kwargs):
-        self.r = Reddit('gamethread')
+        self.r = Reddit()
         self.renderer = Renderer()
         super().__init__(*args, **kwargs)
 
@@ -184,7 +184,7 @@ class ThreadUpdater(GameThreadThread):
     interval = timedelta(minutes=3)
 
     def __init__(self, *args, **kwargs):
-        self.r = Reddit('gamethread')
+        self.r = Reddit()
         self.renderer = Renderer()
         self.envs = {}
         super().__init__(*args, **kwargs)
@@ -215,7 +215,7 @@ class ConfigUpdater(GameThreadThread):
     interval = timedelta(minutes=15)
 
     def __init__(self, root_sub, *args, **kwargs):
-        self.r = Reddit('gamethread')
+        self.r = Reddit()
         self.root_sub = self.r.subreddit(root_sub)
         super().__init__(*args, **kwargs)
 

@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # TODO: This is generic enough that it should be extracted
 import yaml
-import percache
-import appdirs
 import os
 import logging
 
@@ -25,9 +23,6 @@ class SubredditCustomConfig():
             path = WIKI_PATH
         self.path = path
         self.config = None
-        cache_dir = appdirs.user_cache_dir(PROGRAM, AUTHOR)
-        os.makedirs(cache_dir, exist_ok=True)
-        self.cache = percache.Cache(cache_dir, repr=my_repr)
         self.refresh()
 
     def refresh(self, create_if_missing=True):
@@ -41,7 +36,7 @@ class SubredditCustomConfig():
             #    res = self.sub.edit_wiki_page(self.path, '')
             #    self.refresh(create_if_missing=False)
             #else:
-            self.logger.warn("Page doesn't exist, giving up")
+            self.logger.warn("Page %s doesn't exist, giving up" % self.path)
             raise
 
     def get(self, path, default=None):
