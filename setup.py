@@ -20,18 +20,16 @@ AUTHOR = 'Jonas Häggqvist'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'Jinja2>=2.10.1,<3',
-    'beautifulsoup4>=4.6.0,<5',
+    'Jinja2>=3.1.2,<3.2',
+    'beautifulsoup4>=4.11.1,<5',
     'html5lib>=1.1,<1.2',
-    'praw>=5.1.0,<6',
+    'praw>=7.6.0,<8',
     'pytz',
     'python-yr>=1.4.5,<2',
-    'PyYAML>=5.1,<6',
-    'SQLAlchemy>=1.3.0,<1.4',
-    'ujson>=1.35,<2',
+    'PyYAML>=6.0,<7',
+    'SQLAlchemy>=1.4.41,<1.5',
     'psycopg2>=2.7.3.1,<3',
     'roman>=3.3,<4',
-    'MarkupSafe==2.0.1',
     'nflapi @ git+https://git@github.com/rasher/nflapi@6846df73b0#egg=nflapi',
 ]
 

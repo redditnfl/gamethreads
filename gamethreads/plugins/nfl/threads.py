@@ -2,7 +2,6 @@ from datetime import timedelta, datetime
 from pprint import pprint
 from urllib.request import urlopen
 import urllib
-import ujson
 import pendulum
 from sqlalchemy import func
 from sqlalchemy.sql import exists
@@ -148,7 +147,8 @@ class NFLGameStateUpdater(GameThreadThread):
 
     def lap(self):
         session = self.Session()
-        games = self.unarchived_games().filter(NFLGame.game_detail_id == None)
+        # TODO: Figure out what we're doing here
+        games = self.unarchived_games().join(Game.nfl_game, full=True).filter(NFLGame.game_detail_id == None)
         lut = {game.game_id: game for game in games}
         for game_id, gdi in self.get_game_detail_ids([game.game_id for game in games]):
             lut[game_id].game_detail_id = gdi
