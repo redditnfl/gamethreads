@@ -98,10 +98,10 @@ class NFLBoxscoreUpdater(GameThreadThread):
             #gd.game_injuries()
             gd.scoring_summaries()
             gd.coin_toss_results()
-            #gd.live_home_team_game_stats()
-            #gd.live_home_player_game_stats()
-            #gd.live_visitor_team_game_stats()
-            #gd.live_visitor_player_game_stats()
+            gd.live_home_team_game_stats()
+            gd.live_home_player_game_stats()
+            gd.live_visitor_team_game_stats()
+            gd.live_visitor_player_game_stats()
             result, json = self.nfl.shield.query(op, return_json=True)
             json = json['data']['viewer']['league']['gameDetail']
             return json
