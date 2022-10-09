@@ -144,4 +144,4 @@ Next, create the database, obtain a refresh token and run the server::
 
 If you wish to use the preview service, add the `preview` profile::
 
-    $ docker-compose --env-file .env --profile prod,preview up
+    $ docker-compose --env-file .env --profile prod --profile preview up
