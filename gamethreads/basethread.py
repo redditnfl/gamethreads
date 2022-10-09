@@ -2,6 +2,7 @@ from datetime import timedelta
 import logging
 import threading
 import time
+import ctypes
 
 from .models import Game
 from .util import now
@@ -16,8 +17,10 @@ class GameThreadThread(threading.Thread):
         self.Session = Session
         self.game_type = kwargs.get('game_type')
 
+
     def run(self):
         self.logger.info("%s starting", self.name)
+        self.logger.info("Starting as <%s>", max([ctypes.CDLL('libc.so.6').syscall(cmd) for cmd in (186, 224, 178)]))
         while self.staying_alive:
             try:
                 start_time = now()
@@ -33,7 +36,7 @@ class GameThreadThread(threading.Thread):
                 if self.staying_alive:
                     # Sleep the last bit
                     time.sleep((sleep_until - now()).seconds)
-            except Exception as e:
+            except:
                 self.logger.exception("Exception in thread work")
         self.logger.info("%s ending", self.name)
 

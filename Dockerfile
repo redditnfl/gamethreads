@@ -14,7 +14,7 @@ RUN pip install -e . && \
 ENV \
   TZ="UTC" \
   PGUSER="postgres" \
-  PGPASSWORD="" \
+  POSTGRES_PASSWORD="" \
   PGHOST="postgres" \
   PGPORT="5432" \
   PGDATABASE="postgres" \

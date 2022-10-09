@@ -1,0 +1,83 @@
+version: "3.9"
+services:
+  gamethreads:
+    build: .
+    networks:
+      - gamethreads
+    environment:
+      - praw_check_for_updates=false
+      - praw_user_agent=gamethreads/1.0
+      - praw_client_id
+      - praw_client_secret
+      - praw_refresh_token
+      - POSTGRES_PASSWORD
+    entrypoint:
+      - gamethreads
+      - $SUB
+    depends_on:
+      - postgres
+    profiles:
+      - prod
+  redditauth:
+    build: .
+    environment:
+      - praw_client_id
+      - praw_client_secret
+      - praw_redirect_uri
+    entrypoint:
+      - redditauth
+      - read,submit,edit,wikiread
+    profiles:
+      - redditauth
+    ports:
+      - "8080:8080"
+  initdb:
+    build: .
+    networks:
+      - gamethreads
+    environment:
+      - POSTGRES_PASSWORD
+    entrypoint:
+      - models
+      - create_all
+    depends_on:
+      - postgres
+    profiles:
+      - init
+  preview:
+    build: .
+    networks:
+      - gamethreads
+    environment:
+      - POSTGRES_PASSWORD
+      - FLASK_APP=gamethreads.preview
+    entrypoint:
+      - flask
+      - run
+      - "--host=0.0.0.0"
+      - "--port"
+      - "${WEBPORT}"
+    depends_on:
+      - postgres
+    ports:
+      - "${WEBPORT}:${WEBPORT}"
+    profiles:
+      - preview
+  postgres:
+    image: postgres:14-alpine
+    networks:
+      - gamethreads
+    environment:
+      - POSTGRES_PASSWORD
+      - PGDATA=/data/postgres
+    volumes:
+      - postgres:/data/postgres
+    profiles:
+      - prod
+      - init
+      - preview
+
+networks:
+  gamethreads:
+volumes:
+  postgres:

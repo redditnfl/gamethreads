@@ -96,7 +96,7 @@ def main():
     import sqlalchemy
     from sqlalchemy.orm import sessionmaker
     import os
-    engine = sqlalchemy.create_engine('postgresql+psycopg2://{0[PGUSER]}:{0[PGPASSWORD]}@{0[PGHOST]}:{0[PGPORT]}/{0[PGDATABASE]}'.format(os.environ), echo=True)
+    engine = sqlalchemy.create_engine('postgresql+psycopg2://{0[PGUSER]}:{0[POSTGRES_PASSWORD]}@{0[PGHOST]}:{0[PGPORT]}/{0[PGDATABASE]}'.format(os.environ), echo=True)
     session = sessionmaker(bind=engine)
     cmd = sys.argv[1]
     if cmd == 'create_all':

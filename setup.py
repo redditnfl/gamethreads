@@ -31,6 +31,8 @@ REQUIRED = [
     'psycopg2>=2.7.3.1,<3',
     'roman>=3.3,<4',
     'nflapi @ git+https://git@github.com/rasher/nflapi@6846df73b0#egg=nflapi',
+    'flask',
+    'Flask-SQLAlchemy',
 ]
 
 # The rest you shouldn't have to touch too much :)
@@ -102,7 +104,7 @@ setup(
             'gamethreads=gamethreads.gamethreader:main',
             'models=gamethreads.models:main',
             'redzone=gamethreads.plugins.nfl.redzone:main',
-            'schedule=gamethreads.plugins.nfl.schedule:main',
+            'redditauth=gamethreads.auth:main',
             ],
     },
     install_requires=REQUIRED,

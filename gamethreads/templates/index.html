@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<head>
+    <title>Gamethread template preview</title>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/themes/prism.min.css" integrity="sha512-/mZ1FHPkg6EKcxo0fKXF51ak6Cr2ocgDi5ytaTBjsQZIH/RNs6GF6+oId/vPe3eJB836T36nXwVh/WBl/cWT4w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script>
+
+        var updateTimer;
+
+        async function load_context() {
+            let game_id=document.getElementById('game').value;
+            const response = await fetch('/context/' + game_id);
+            const body = await response.text();
+            document.querySelector('#ctx').innerHTML = body;
+            queue_update()
+        }
+
+        async function queue_update() {
+            if (!!updateTimer) {
+                window.clearTimeout(updateTimer);
+            }
+            updateTimer = window.setTimeout(async function() { await render(); }, 500);
+        }
+
+        async function render() {
+            let formData = new FormData();
+            formData.append('game_id', document.getElementById('game').value);
+            formData.append('tpl', document.getElementById('tpl').value);
+            const response = await fetch('/render', {
+                body: formData,
+                method: 'POST'
+            });
+            const body = await response.text();
+            document.querySelector('#thread_code').innerHTML = body;
+            Prism.highlightAll();
+        }
+    </script>
+    <style>
+        select {
+            float: right;
+        }
+        .my-container {
+            width: 100%;
+            display: flex;
+        }
+        #tpl, #thread, #ctx {
+            flex: 1;
+        }
+        textarea, pre {
+            height: 40vh;
+        }
+    </style>
+</head>
+<body>
+    <form>
+        <select name="game" id="game">
+            {% for game in games -%}
+            {% set nfl_game=game.nfl_game -%}
+            {% if loop.changed(nfl_game.week) -%}
+            {% if not loop.first -%}
+            </optgroup>
+            {% endif -%}
+            <optgroup label="{{ nfl_game.season }} {{ nfl_game.season_type }} {{ nfl_game.week }}">
+                {%- endif %}
+                <option value="{{ game.game_id }}">{{ nfl_game.away }} @ {{ nfl_game.home }}</option>
+                {%- if loop.last %}
+            </optgroup>
+            {%- endif -%}
+            {%- endfor %}
+        </select>
+    </form>
+    <div class="my-container">
+        <textarea id="tpl"></textarea>
+        <pre id="thread"><code id="thread_code" class="language-markdown"></code></pre>
+    </div>
+    <div class="my-container">
+    <textarea id="ctx"></textarea>
+    </div>
+
+    <script>
+        let game_list = document.getElementById('game');
+        let tpl = document.getElementById('tpl')
+        game_list.addEventListener('change', load_context);
+        tpl.addEventListener('input', queue_update);
+        load_context();
+    </script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/prism.min.js" integrity="sha512-UOoJElONeUNzQbbKQbjldDf9MwOHqxNz49NNJJ1d90yp+X9edsHyJoAs6O4K19CZGaIdjI5ohK+O2y5lBTW6uQ==" crossorigin="anonymous" referrerpolicy="no-referrer" data-manual></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/components/prism-markdown.min.js" integrity="sha512-4lQBgtc3AKPFSyFxc8Uaq6rz3VHwrSOdQxXtkJN9cS81ErTSoNSBxLDzWNYwwYryuvQpseKWiOmZdArMroqnLw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</body>
+</html>

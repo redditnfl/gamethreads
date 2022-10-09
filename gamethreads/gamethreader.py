@@ -28,7 +28,7 @@ class Gamethreader:
         setup_logging()
         self.logger = logging.getLogger(type(self).__name__)
         signal.signal(signal.SIGINT, signal_handler)
-        engine = sqlalchemy.create_engine('postgresql+psycopg2://{0[PGUSER]}:{0[PGPASSWORD]}@{0[PGHOST]}:{0[PGPORT]}/{0[PGDATABASE]}'.format(os.environ), echo = False)
+        engine = sqlalchemy.create_engine('postgresql+psycopg2://{0[PGUSER]}:{0[POSTGRES_PASSWORD]}@{0[PGHOST]}:{0[PGPORT]}/{0[PGDATABASE]}'.format(os.environ), echo = False)
         session_factory = sessionmaker(bind=engine)
         self.session = scoped_session(session_factory)
 

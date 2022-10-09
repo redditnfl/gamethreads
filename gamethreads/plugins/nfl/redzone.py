@@ -48,7 +48,7 @@ def main():
     if rz_thread is None:
         print("No thread found matching %s" % sys.argv[1])
         sys.exit(1)
-    engine = sqlalchemy.create_engine('postgresql+psycopg2://{0[PGUSER]}:{0[PGPASSWORD]}@{0[PGHOST]}:{0[PGPORT]}/{0[PGDATABASE]}'.format(os.environ), echo = False)
+    engine = sqlalchemy.create_engine('postgresql+psycopg2://{0[PGUSER]}:{0[POSTGRES_PASSWORD]}@{0[PGHOST]}:{0[PGPORT]}/{0[PGDATABASE]}'.format(os.environ), echo = False)
     Session = sessionmaker(bind=engine)
 
     session = Session()

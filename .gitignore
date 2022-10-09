@@ -4,5 +4,7 @@ __pycache__/
 *.log*
 praw.ini
 env.sh
+.env
 *.swp
 *.egg-info/
+.idea
